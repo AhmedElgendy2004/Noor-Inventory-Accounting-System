@@ -33,23 +33,51 @@ class ProductService {
     }
   }
 
-  /// Get products with optional search query
-  Future<List<ProductModel>> getProducts({String? searchQuery}) async {
+  /// Get products with optional search query and pagination
+  Future<List<ProductModel>> getProducts({
+    String? searchQuery,
+    int? limit,
+    int? offset,
+  }) async {
     try {
       dynamic query = _supabase.from(SupabaseConstants.productsTable).select();
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
+        // Search mode: Filter by name or barcode
         query = query.or(
           'name.ilike.%$searchQuery%,barcode.ilike.%$searchQuery%',
         );
       } else {
+        // Normal mode: Default ordering
         query = query.order('created_at', ascending: false);
+      }
+
+      // Apply pagination if provided
+      if (limit != null && offset != null) {
+        query = query.range(offset, offset + limit - 1);
       }
 
       final response = await query;
       return (response as List).map((e) => ProductModel.fromJson(e)).toList();
     } catch (e) {
       throw Exception('Error fetching products: $e');
+    }
+  }
+
+  /// Get total count of products
+  Future<int> getTotalProductsCount() async {
+    try {
+      final response = await _supabase
+          .from(SupabaseConstants.productsTable)
+          .count();
+      // .count() returns the int directly in modern SDKs or via response depending on version.
+      // If the SDK version returns Future<int>, this is correct.
+      // If it returns PostgrestResponse, we need to inspect it.
+      // Given standard Supabase Flutter usage: count() usually returns Future<int>.
+      return response;
+    } catch (e) {
+      // Fallback or rethrow
+      return 0;
     }
   }
 

@@ -14,11 +14,29 @@ class InventoryLoading extends InventoryState {}
 
 class InventoryLoaded extends InventoryState {
   final List<ProductModel> products;
+  final bool hasReachedMax;
+  final int totalProductCount;
 
-  const InventoryLoaded(this.products);
+  const InventoryLoaded(
+    this.products, {
+    this.hasReachedMax = false,
+    this.totalProductCount = 0,
+  });
+
+  InventoryLoaded copyWith({
+    List<ProductModel>? products,
+    bool? hasReachedMax,
+    int? totalProductCount,
+  }) {
+    return InventoryLoaded(
+      products ?? this.products,
+      hasReachedMax: hasReachedMax ?? this.hasReachedMax,
+      totalProductCount: totalProductCount ?? this.totalProductCount,
+    );
+  }
 
   @override
-  List<Object?> get props => [products];
+  List<Object?> get props => [products, hasReachedMax, totalProductCount];
 }
 
 class InventorySuccess extends InventoryState {

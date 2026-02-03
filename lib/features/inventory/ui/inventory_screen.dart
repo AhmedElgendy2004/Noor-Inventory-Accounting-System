@@ -15,27 +15,35 @@ class InventoryScreen extends StatefulWidget {
 
 class _InventoryScreenState extends State<InventoryScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   bool _isScanning = false;
 
   @override
   void initState() {
     super.initState();
-    // Load inventory initially
-    // Using context.read() inside initState callback if strictly needed,
-    // but usually calling it in the first frame or init is fine.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<InventoryCubit>().loadInventory();
     });
+
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
+  void _onScroll() {
+    if (_isScanning) return;
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.9) {
+      context.read<InventoryCubit>().loadInventory(loadMore: true);
+    }
+  }
+
   void _onSearchChanged(String value) {
-    // Simple debounce could be added here, currently just calling load
     context.read<InventoryCubit>().loadInventory(query: value);
   }
 
@@ -173,68 +181,123 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         query: _searchController.text,
                       );
                     },
-                    child: ListView.builder(
-                      itemCount: products.length,
-                      itemBuilder: (context, index) {
-                        final product = products[index];
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          child: ListTile(
-                            title: Text(
-                              product.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                    child: Column(
+                      children: [
+                        // Total Count Widget (Visible only when not searching)
+                        if (_searchController.text.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 8.0,
+                              horizontal: 16.0,
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
                               children: [
-                                Text('الباركود: ${product.barcode}'),
+                                const Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 20,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(width: 8),
                                 Text(
-                                  'السعر: ${product.retailPrice} | الكمية: ${product.stockQuantity}',
-                                ),
-                              ],
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit,
-                                    color: Colors.blue,
+                                  'إجمالي الأصناف: ${state.totalProductCount}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
                                   ),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => AddProductScreen(
-                                          productToEdit: product,
-                                        ),
-                                      ),
-                                    ).then((_) {
-                                      if (mounted) {
-                                        context
-                                            .read<InventoryCubit>()
-                                            .loadInventory();
-                                      }
-                                    });
-                                  },
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () => _deleteProduct(product),
                                 ),
                               ],
                             ),
                           ),
-                        );
-                      },
+
+                        Expanded(
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            itemCount: state.hasReachedMax
+                                ? products.length
+                                : products.length + 1,
+                            itemBuilder: (context, index) {
+                              if (index >= products.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              final product = products[index];
+                              return Card(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: ListTile(
+                                  title: Text(
+                                    product.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text('الباركود: ${product.barcode}'),
+                                      Text(
+                                        'السعر: ${product.retailPrice} | الكمية: ${product.stockQuantity}',
+                                      ),
+                                    ],
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit,
+                                          color: Colors.blue,
+                                        ),
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  AddProductScreen(
+                                                    productToEdit: product,
+                                                  ),
+                                            ),
+                                          ).then((_) {
+                                            if (mounted) {
+                                              context
+                                                  .read<InventoryCubit>()
+                                                  .loadInventory();
+                                            }
+                                          });
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.red,
+                                        ),
+                                        onPressed: () =>
+                                            _deleteProduct(product),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 } else if (state is InventoryError) {
@@ -242,7 +305,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(state.message),
+                        //   Text(state.message),
+                        Icon(
+                          Icons.signal_wifi_connected_no_internet_4,
+                          size: 48,
+                        ),
+                        Text("لا يوجد اتصال بالإنترنت"),
                         const SizedBox(height: 10),
                         ElevatedButton(
                           onPressed: () {
