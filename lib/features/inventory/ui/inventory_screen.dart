@@ -6,6 +6,8 @@ import '../logic/inventory_cubit.dart';
 import '../logic/inventory_state.dart';
 import 'add_product_screen.dart';
 
+import '../../../core/utils/snackbar_utils.dart'; // Add import
+
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({Key? key}) : super(key: key);
 
@@ -157,12 +159,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             child: BlocConsumer<InventoryCubit, InventoryState>(
               listener: (context, state) {
                 if (state is InventoryError) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.message),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  SnackBarUtils.showError(context, state.message);
                 }
               },
               builder: (context, state) {

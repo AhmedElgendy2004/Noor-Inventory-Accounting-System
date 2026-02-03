@@ -7,6 +7,8 @@ import '../../../data/models/product_model.dart';
 import '../logic/inventory_cubit.dart';
 import '../logic/inventory_state.dart';
 
+import '../../../core/utils/snackbar_utils.dart'; // Add import
+
 class AddProductScreen extends StatefulWidget {
   final ProductModel? productToEdit;
   const AddProductScreen({Key? key, this.productToEdit}) : super(key: key);
@@ -88,24 +90,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
       body: BlocConsumer<InventoryCubit, InventoryState>(
         listener: (context, state) {
           if (state is InventorySuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.green,
-              ),
-            );
+            SnackBarUtils.showSuccess(context, state.message);
             if (!isEditing) {
               _clearForm();
             } else {
               Navigator.pop(context);
             }
           } else if (state is InventoryError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-              ),
-            );
+            SnackBarUtils.showError(context, state.message);
           }
         },
         builder: (context, state) {
