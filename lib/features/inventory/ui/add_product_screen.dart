@@ -2,6 +2,7 @@ import 'package:al_noor_gallery/features/inventory/ui/widget/custom_text_field.d
 import 'package:al_noor_gallery/features/inventory/ui/widget/form_sections.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/utils/inline_barcode_scanner.dart';
 import '../../../data/models/product_model.dart';
 import '../logic/inventory_cubit.dart';
 import '../logic/inventory_state.dart';
@@ -33,6 +34,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     'expiryAlert': TextEditingController(),
   };
 
+  bool _isScanning = false;
   DateTime? _selectedExpiryDate;
 
   @override
@@ -60,7 +62,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     if (p.expiryDate != null) {
       _selectedExpiryDate = p.expiryDate;
-      _controllers['expiryDate']!.text = p.expiryDate!.toIso8601String().split('T')[0];
+      _controllers['expiryDate']!.text = p.expiryDate!.toIso8601String().split(
+        'T',
+      )[0];
     }
   }
 
@@ -78,12 +82,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final isEditing = widget.productToEdit != null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(isEditing ? 'تعديل المنتج' : 'إضافة منتج جديد')),
+      appBar: AppBar(
+        title: Text(isEditing ? 'تعديل المنتج' : 'إضافة منتج جديد'),
+      ),
       body: BlocConsumer<InventoryCubit, InventoryState>(
         listener: (context, state) {
           if (state is InventorySuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.green,
+              ),
             );
             if (!isEditing) {
               _clearForm();
@@ -92,7 +101,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
             }
           } else if (state is InventoryError) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
             );
           }
         },
@@ -109,30 +121,96 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 children: [
                   // 1. البيانات الأساسية
                   const SectionTitle('البيانات الأساسية'),
-                  CustomTextField(controller: _controllers['name']!, label: 'اسم المنتج', isRequired: true),
-                  CustomTextField(controller: _controllers['barcode']!, label: 'الباركود', icon: Icons.qr_code, isRequired: true),
-                  CustomTextField(controller: _controllers['brand']!, label: 'الشركة المصنعة'),
+                  CustomTextField(
+                    controller: _controllers['name']!,
+                    label: 'اسم المنتج',
+                    isRequired: true,
+                  ),
+
+                  // Scanner Widget
+                  if (_isScanning)
+                    InlineBarcodeScanner(
+                      onBarcodeDetected: (code) {
+                        setState(() {
+                          _controllers['barcode']!.text = code;
+                          _isScanning = false;
+                        });
+                      },
+                      onClose: () => setState(() => _isScanning = false),
+                    ),
+
+                  CustomTextField(
+                    controller: _controllers['barcode']!,
+                    label: 'الباركود',
+                    icon: Icons.qr_code,
+                    isRequired: true,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isScanning ? Icons.stop_circle : Icons.qr_code_scanner,
+                      ),
+                      color: _isScanning ? Colors.red : null,
+                      onPressed: () {
+                        setState(() {
+                          _isScanning = !_isScanning;
+                        });
+                      },
+                    ),
+                  ),
+
+                  CustomTextField(
+                    controller: _controllers['brand']!,
+                    label: 'الشركة المصنعة',
+                  ),
 
                   // 2. الأسعار
                   const SectionTitle('الأسعار'),
                   RowFields(
-                    field1: CustomTextField(controller: _controllers['purchasePrice']!, label: 'شراء', isNumber: true, isRequired: true),
-                    field2: CustomTextField(controller: _controllers['retailPrice']!, label: 'قطاعي', isNumber: true, isRequired: true),
+                    field1: CustomTextField(
+                      controller: _controllers['purchasePrice']!,
+                      label: 'شراء',
+                      isNumber: true,
+                      isRequired: true,
+                    ),
+                    field2: CustomTextField(
+                      controller: _controllers['retailPrice']!,
+                      label: 'قطاعي',
+                      isNumber: true,
+                      isRequired: true,
+                    ),
                   ),
-                  CustomTextField(controller: _controllers['wholesalePrice']!, label: 'سعر الجملة', isNumber: true),
+                  CustomTextField(
+                    controller: _controllers['wholesalePrice']!,
+                    label: 'سعر الجملة',
+                    isNumber: true,
+                  ),
 
                   // 3. المخزن
                   const SectionTitle('المخزن'),
                   RowFields(
-                    field1: CustomTextField(controller: _controllers['stock']!, label: 'الكمية', isNumber: true, isRequired: true),
-                    field2: CustomTextField(controller: _controllers['minStock']!, label: 'الحد الأدنى', isNumber: true),
+                    field1: CustomTextField(
+                      controller: _controllers['stock']!,
+                      label: 'الكمية',
+                      isNumber: true,
+                      isRequired: true,
+                    ),
+                    field2: CustomTextField(
+                      controller: _controllers['minStock']!,
+                      label: 'الحد الأدنى',
+                      isNumber: true,
+                    ),
                   ),
 
                   // 4. الخصائص والصلاحية
                   const SectionTitle('تفاصيل إضافية'),
                   RowFields(
-                    field1: CustomTextField(controller: _controllers['size']!, label: 'الحجم/الوزن'),
-                    field2: CustomTextField(controller: _controllers['color']!, label: 'اللون'),
+                    field1: CustomTextField(
+                      controller: _controllers['size']!,
+                      label: 'الحجم/الوزن',
+                    ),
+                    field2: CustomTextField(
+                      controller: _controllers['color']!,
+                      label: 'اللون',
+                    ),
                   ),
                   CustomTextField(
                     controller: _controllers['expiryDate']!,
@@ -141,7 +219,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     readOnly: true,
                     onTap: () => _pickDate(context),
                   ),
-                  CustomTextField(controller: _controllers['expiryAlert']!, label: 'أيام التنبيه', isNumber: true),
+                  CustomTextField(
+                    controller: _controllers['expiryAlert']!,
+                    label: 'أيام التنبيه',
+                    isNumber: true,
+                  ),
 
                   const SizedBox(height: 20),
                   // زر الحفظ
@@ -150,9 +232,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () => _handleSave(context),
-                      child: Text(isEditing ? 'حفظ التعديلات' : 'حفظ المنتج', style: const TextStyle(fontSize: 18)),
+                      child: Text(
+                        isEditing ? 'حفظ التعديلات' : 'حفظ المنتج',
+                        style: const TextStyle(fontSize: 18),
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
@@ -174,7 +260,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (picked != null) {
       setState(() {
         _selectedExpiryDate = picked;
-        _controllers['expiryDate']!.text = picked.toIso8601String().split('T')[0];
+        _controllers['expiryDate']!.text = picked.toIso8601String().split(
+          'T',
+        )[0];
       });
     }
   }
@@ -185,16 +273,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
         id: widget.productToEdit?.id,
         name: _controllers['name']!.text,
         barcode: _controllers['barcode']!.text,
-        brandCompany: _controllers['brand']!.text.isEmpty ? null : _controllers['brand']!.text,
-        sizeVolume: _controllers['size']!.text.isEmpty ? null : _controllers['size']!.text,
-        color: _controllers['color']!.text.isEmpty ? null : _controllers['color']!.text,
-        
+        brandCompany: _controllers['brand']!.text.isEmpty
+            ? null
+            : _controllers['brand']!.text,
+        sizeVolume: _controllers['size']!.text.isEmpty
+            ? null
+            : _controllers['size']!.text,
+        color: _controllers['color']!.text.isEmpty
+            ? null
+            : _controllers['color']!.text,
+
         // تحويل الأرقام بأمان
         stockQuantity: int.tryParse(_controllers['stock']!.text) ?? 0,
-        minStockLevel: int.tryParse(_controllers['minStock']!.text) ?? 0, // تم الحل: يقرأ من الكنترولر
-        purchasePrice: double.tryParse(_controllers['purchasePrice']!.text) ?? 0.0,
+        minStockLevel:
+            int.tryParse(_controllers['minStock']!.text) ??
+            0, // تم الحل: يقرأ من الكنترولر
+        purchasePrice:
+            double.tryParse(_controllers['purchasePrice']!.text) ?? 0.0,
         retailPrice: double.tryParse(_controllers['retailPrice']!.text) ?? 0.0,
-        wholesalePrice: double.tryParse(_controllers['wholesalePrice']!.text) ?? 0.0,
+        wholesalePrice:
+            double.tryParse(_controllers['wholesalePrice']!.text) ?? 0.0,
         expiryAlertDays: int.tryParse(_controllers['expiryAlert']!.text),
         expiryDate: _selectedExpiryDate,
       );

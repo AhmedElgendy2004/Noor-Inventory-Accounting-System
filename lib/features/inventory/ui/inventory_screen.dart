@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/utils/inline_barcode_scanner.dart';
 import '../../../../data/models/product_model.dart';
 import '../logic/inventory_cubit.dart';
 import '../logic/inventory_state.dart';
@@ -14,6 +15,7 @@ class InventoryScreen extends StatefulWidget {
 
 class _InventoryScreenState extends State<InventoryScreen> {
   final TextEditingController _searchController = TextEditingController();
+  bool _isScanning = false;
 
   @override
   void initState() {
@@ -87,14 +89,60 @@ class _InventoryScreenState extends State<InventoryScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: 'بحث عن منتج (اسم أو باركود)',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-              onChanged: _onSearchChanged,
+            child: Column(
+              children: [
+                if (_isScanning)
+                  InlineBarcodeScanner(
+                    onBarcodeDetected: (code) {
+                      setState(() {
+                        _searchController.text = code;
+                        _isScanning = false;
+                      });
+                      _onSearchChanged(code);
+                    },
+                    onClose: () => setState(() => _isScanning = false),
+                  ),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _searchController,
+                  builder: (context, value, child) {
+                    return TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        labelText: 'بحث عن منتج (اسم أو باركود)',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (value.text.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _onSearchChanged('');
+                                },
+                              ),
+                            IconButton(
+                              icon: Icon(
+                                _isScanning
+                                    ? Icons.stop_circle
+                                    : Icons.qr_code_scanner,
+                              ),
+                              color: _isScanning ? Colors.red : null,
+                              onPressed: () {
+                                setState(() {
+                                  _isScanning = !_isScanning;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        border: const OutlineInputBorder(),
+                      ),
+                      onChanged: _onSearchChanged,
+                    );
+                  },
+                ),
+              ],
             ),
           ),
           Expanded(
