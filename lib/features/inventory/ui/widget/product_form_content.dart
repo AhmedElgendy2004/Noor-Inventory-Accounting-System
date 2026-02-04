@@ -26,6 +26,11 @@ class ProductFormContent extends StatelessWidget {
   final ValueChanged<String?> onCategoryChanged;
   final VoidCallback onAddCategory;
 
+  // متغيرات الصلاحية الجديدة
+  final bool isCalculatedExpiryMode;
+  final ValueChanged<bool> onExpiryModeChanged;
+  final VoidCallback onPickProductionDate;
+
   const ProductFormContent({
     Key? key,
     required this.formKey,
@@ -40,6 +45,9 @@ class ProductFormContent extends StatelessWidget {
     this.selectedCategoryId,
     required this.onCategoryChanged,
     required this.onAddCategory,
+    this.isCalculatedExpiryMode = false,
+    required this.onExpiryModeChanged,
+    required this.onPickProductionDate,
   }) : super(key: key);
 
   @override
@@ -166,12 +174,44 @@ class ProductFormContent extends StatelessWidget {
             // 4. قسم الخصائص والصلاحية
             const SectionTitle('تفاصيل إضافية'),
 
+            // مفتاح التبديل بين الوضعين
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SwitchListTile(
+                title: const Text('حساب الصلاحية تلقائياً'),
+                subtitle: const Text('إدخال تاريخ الإنتاج + المدة'),
+                value: isCalculatedExpiryMode,
+                onChanged: onExpiryModeChanged,
+              ),
+            ),
+
+            // حقول الوضع المحسوب
+            if (isCalculatedExpiryMode)
+              RowFields(
+                field1: CustomTextField(
+                  controller: controllers['productionDate']!,
+                  label: 'تاريخ الإنتاج',
+                  icon: Icons.history,
+                  readOnly: true,
+                  onTap: onPickProductionDate,
+                ),
+                field2: CustomTextField(
+                  controller: controllers['validityMonths']!,
+                  label: 'المدة (شهور)',
+                  isNumber: true,
+                ),
+              ),
+
             CustomTextField(
               controller: controllers['expiryDate']!,
               label: 'تاريخ الصلاحية',
               icon: Icons.calendar_today,
               readOnly: true,
-              onTap: onPickDate,
+              onTap: isCalculatedExpiryMode ? null : onPickDate,
             ),
 
             CustomTextField(

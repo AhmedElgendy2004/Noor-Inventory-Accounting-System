@@ -9,6 +9,7 @@ class CustomTextField extends StatelessWidget {
   final bool isRequired;
   final bool readOnly;
   final VoidCallback? onTap;
+  final bool enabled;
 
   const CustomTextField({
     Key? key,
@@ -20,6 +21,7 @@ class CustomTextField extends StatelessWidget {
     this.isRequired = false,
     this.readOnly = false,
     this.onTap,
+    this.enabled = true,
   }) : super(key: key);
 
   @override
@@ -31,6 +33,7 @@ class CustomTextField extends StatelessWidget {
         builder: (context, value, child) {
           return TextFormField(
             controller: controller,
+            enabled: enabled,
             readOnly: readOnly,
             onTap: onTap,
             // لو رقم بنظهر كيبورد الأرقام، لو نص بنظهر العادي

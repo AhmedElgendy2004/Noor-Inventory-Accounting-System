@@ -42,12 +42,44 @@ class _EditProductScreenState extends State<EditProductScreen> {
   DateTime? _selectedExpiryDate;
   String? _selectedCategoryId;
 
+  // متغيرات الصلاحية
+  bool _isCalculatedExpiryMode = false;
+  DateTime? _productionDate;
+
+  // دالة مساعدة لتحويل DateTime لنص عربي
+  String _formatDateToArabic(DateTime date) {
+    return "${_arabicMonths[date.month - 1]} ${date.year}";
+  }
+
   @override
   void initState() {
     super.initState();
     // تحميل التصنيفات للتأكد من وجودها
     context.read<InventoryCubit>().loadCategories();
     _initControllers();
+
+    // الاستماع لتغيير مدة الصلاحية
+    _controllers['validityMonths']!.addListener(_calculateExpiry);
+  }
+
+  void _calculateExpiry() {
+    if (!_isCalculatedExpiryMode || _productionDate == null) return;
+
+    final monthsStr = _controllers['validityMonths']!.text;
+    final months = int.tryParse(monthsStr);
+
+    if (months != null && months > 0) {
+      final newDate = DateTime(
+        _productionDate!.year,
+        _productionDate!.month + months,
+        _productionDate!.day,
+      );
+
+      setState(() {
+        _selectedExpiryDate = newDate;
+        _controllers['expiryDate']!.text = _formatDateToArabic(newDate);
+      });
+    }
   }
 
   // تعبئة البيانات من المنتج الموجود
@@ -72,29 +104,39 @@ class _EditProductScreenState extends State<EditProductScreen> {
       ),
       'expiryDate': TextEditingController(
         text: p.expiryDate != null
-            ? p.expiryDate!.toIso8601String().split('T')[0]
+            ? _formatDateToArabic(p.expiryDate!) // استخدام الصيغة العربية
             : '',
       ),
+      'productionDate': TextEditingController(),
+      'validityMonths': TextEditingController(),
     };
   }
 
   @override
   void dispose() {
+    _controllers['validityMonths']!.removeListener(_calculateExpiry);
     for (var controller in _controllers.values) {
       controller.dispose();
     }
     super.dispose();
   }
 
-  Future<void> _pickDate() async {
+  // استخدمنا الدالة العامة التي أضفناها في AddProductScreen كمرجع، ولكن هنا سنعيد كتابتها للتسهيل
+  // يمكن نقلها لملف utils لاحقاً
+  Future<void> _pickDateGeneral(
+    DateTime? initialDate,
+    Function(DateTime) onConfirm,
+  ) async {
     final now = DateTime.now();
-    int selectedMonth = _selectedExpiryDate?.month ?? now.month;
-    int selectedYear = _selectedExpiryDate?.year ?? now.year;
+    int selectedMonth = initialDate?.month ?? now.month;
+    int selectedYear = initialDate?.year ?? now.year;
 
-    // توليد قائمة سنين (السنة الحالية + 5)
-    final List<int> years = List.generate(6, (index) => now.year + index);
+    final List<int> years = List.generate(
+      11,
+      (index) => (now.year - 5) + index,
+    );
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       builder: (BuildContext builder) {
         return Container(
@@ -102,7 +144,6 @@ class _EditProductScreenState extends State<EditProductScreen> {
           color: Colors.white,
           child: Column(
             children: [
-              // شريط الأزرار
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -125,14 +166,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        setState(() {
-                          _selectedExpiryDate = DateTime(
-                            selectedYear,
-                            selectedMonth,
-                          );
-                          _controllers['expiryDate']!.text =
-                              "${_arabicMonths[selectedMonth - 1]} $selectedYear";
-                        });
+                        onConfirm(DateTime(selectedYear, selectedMonth));
                         Navigator.pop(context);
                       },
                       child: const Text('تم'),
@@ -140,11 +174,9 @@ class _EditProductScreenState extends State<EditProductScreen> {
                   ],
                 ),
               ),
-              // البكرات اليدوية (العربي)
               Expanded(
                 child: Row(
                   children: [
-                    // بكرة الشهور
                     Expanded(
                       child: CupertinoPicker(
                         scrollController: FixedExtentScrollController(
@@ -158,11 +190,12 @@ class _EditProductScreenState extends State<EditProductScreen> {
                             .toList(),
                       ),
                     ),
-                    // بكرة السنين
                     Expanded(
                       child: CupertinoPicker(
                         scrollController: FixedExtentScrollController(
-                          initialItem: years.indexOf(selectedYear),
+                          initialItem: years.contains(selectedYear)
+                              ? years.indexOf(selectedYear)
+                              : 5,
                         ),
                         itemExtent: 40,
                         onSelectedItemChanged: (int index) =>
@@ -180,6 +213,25 @@ class _EditProductScreenState extends State<EditProductScreen> {
         );
       },
     );
+  }
+
+  Future<void> _pickDate() async {
+    await _pickDateGeneral(_selectedExpiryDate, (date) {
+      setState(() {
+        _selectedExpiryDate = date;
+        _controllers['expiryDate']!.text = _formatDateToArabic(date);
+      });
+    });
+  }
+
+  Future<void> _pickProductionDate() async {
+    await _pickDateGeneral(_productionDate, (date) {
+      setState(() {
+        _productionDate = date;
+        _controllers['productionDate']!.text = _formatDateToArabic(date);
+        _calculateExpiry();
+      });
+    });
   }
 
   // عرض نافذة إضافة تصنيف
@@ -303,6 +355,18 @@ class _EditProductScreenState extends State<EditProductScreen> {
               });
             },
             onAddCategory: () => _showAddCategoryDialog(context),
+            isCalculatedExpiryMode: _isCalculatedExpiryMode,
+            onExpiryModeChanged: (val) {
+              setState(() {
+                _isCalculatedExpiryMode = val;
+                if (!val) {
+                  _productionDate = null;
+                  _controllers['productionDate']!.clear();
+                  _controllers['validityMonths']!.clear();
+                }
+              });
+            },
+            onPickProductionDate: _pickProductionDate,
             onToggleScanner: () => setState(() => _isScanning = !_isScanning),
             onBarcodeDetected: (code) {
               setState(() {
