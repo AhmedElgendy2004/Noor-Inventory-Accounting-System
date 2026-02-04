@@ -6,7 +6,6 @@ import '../logic/inventory_cubit.dart';
 import '../logic/inventory_state.dart';
 import 'add_product_screen.dart';
 import 'edit_product_screen.dart';
-
 import '../../../core/utils/snackbar_utils.dart';
 
 class InventoryScreen extends StatefulWidget {
@@ -21,13 +20,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isScanning = false;
 
+  final List<Color> _categoryColors = [
+    Colors.blue.shade100,
+    Colors.green.shade100,
+    Colors.orange.shade100,
+    Colors.purple.shade100,
+    Colors.red.shade100,
+    Colors.teal.shade100,
+    Colors.amber.shade100,
+    Colors.pink.shade100,
+    Colors.indigo.shade100,
+    Colors.brown.shade100,
+  ];
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<InventoryCubit>().loadInventory();
+      context.read<InventoryCubit>().loadInitialData();
     });
-
     _scrollController.addListener(_onScroll);
   }
 
@@ -40,14 +51,90 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   void _onScroll() {
     if (_isScanning) return;
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent * 0.9) {
-      context.read<InventoryCubit>().loadInventory(loadMore: true);
+    if (!context.read<InventoryCubit>().state.props.contains(true))
+      return; // Check if Loaded state implicitly?
+    // Better check state type
+    final state = context.read<InventoryCubit>().state;
+    if (state is InventoryLoaded && state.isProductView) {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent * 0.9) {
+        context.read<InventoryCubit>().fetchProducts(
+          categoryId: state.selectedCategoryId,
+          query: _searchController.text,
+          isLoadMore: true,
+        );
+      }
     }
   }
 
   void _onSearchChanged(String value) {
-    context.read<InventoryCubit>().loadInventory(query: value);
+    // If not in product view, do nothing until user selects search?
+    // Or if user types, switch to "All Products" search view?
+    // Prompt says: "If user writes name while in 'Perfumes', search only in perfumes. If in main screen, search all."
+
+    final state = context.read<InventoryCubit>().state;
+    if (state is InventoryLoaded) {
+      if (value.isNotEmpty) {
+        // Trigger search
+        context.read<InventoryCubit>().fetchProducts(
+          categoryId: state.isProductView ? state.selectedCategoryId : null,
+          query: value,
+        );
+      } else {
+        // If clear search, and we were in product view, reload current category without query
+        if (state.isProductView) {
+          context.read<InventoryCubit>().fetchProducts(
+            categoryId: state.selectedCategoryId,
+            query: null,
+          );
+        }
+      }
+    }
+  }
+
+  void _showAddCategoryDialog(BuildContext context) {
+    final TextEditingController categoryController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('إضافة تصنيف جديد'),
+        content: TextField(
+          controller: categoryController,
+          decoration: const InputDecoration(
+            labelText: 'اسم التصنيف',
+            hintText: 'مثال: إلكترونيات',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = categoryController.text.trim();
+              if (name.isNotEmpty) {
+                context
+                    .read<InventoryCubit>()
+                    .addNewCategory(name)
+                    .then((_) {
+                      Navigator.pop(context);
+                      SnackBarUtils.showSuccess(
+                        context,
+                        'تمت إضافة التصنيف بنجاح',
+                      );
+                    })
+                    .catchError((e) {
+                      Navigator.pop(context);
+                      SnackBarUtils.showError(context, 'فشل الإضافة: $e');
+                    });
+              }
+            },
+            child: const Text('إضافة'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _deleteProduct(ProductModel product) async {
@@ -71,7 +158,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
 
     if (confirm == true && mounted) {
-      // Assuming product.id is not null as it comes from DB
       if (product.id != null) {
         context.read<InventoryCubit>().deleteProduct(product.id!);
       }
@@ -80,287 +166,431 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('المخزن')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          // 1. خزن الـ Cubit في متغير قبل الـ await
-          final inventoryCubit = context.read<InventoryCubit>();
+    return BlocBuilder<InventoryCubit, InventoryState>(
+      builder: (context, state) {
+        bool isProductView = false;
+        if (state is InventoryLoaded) {
+          isProductView = state.isProductView;
+        }
 
-          // 2. انتظر عملية التنقل
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddProductScreen()),
-          );
-
-          // 3. لما ترجع، استخدم المتغير اللي خزناه مش الـ context
-          if (mounted) {
-            inventoryCubit.loadInventory();
-          }
-        },
-        child: const Icon(Icons.add),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                if (_isScanning)
-                  InlineBarcodeScanner(
-                    onBarcodeDetected: (code) {
-                      setState(() {
-                        _searchController.text = code;
-                        _isScanning = false;
-                      });
-                      _onSearchChanged(code);
-                    },
-                    onClose: () => setState(() => _isScanning = false),
-                  ),
-                ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _searchController,
-                  builder: (context, value, child) {
-                    return TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        labelText: 'بحث عن منتج (اسم أو باركود)',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (value.text.isNotEmpty)
-                              IconButton(
-                                icon: const Icon(Icons.close),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _onSearchChanged('');
-                                },
-                              ),
-                            IconButton(
-                              icon: Icon(
-                                _isScanning
-                                    ? Icons.stop_circle
-                                    : Icons.qr_code_scanner,
-                              ),
-                              color: _isScanning ? Colors.red : null,
-                              onPressed: () {
-                                setState(() {
-                                  _isScanning = !_isScanning;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                        border: const OutlineInputBorder(),
-                      ),
-                      onChanged: _onSearchChanged,
-                    );
-                  },
-                ),
-              ],
+        return WillPopScope(
+          onWillPop: () async {
+            if (isProductView) {
+              context.read<InventoryCubit>().backToCategories();
+              _searchController.clear();
+              return false;
+            }
+            return true;
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('المخزن'),
+              leading: isProductView
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () {
+                        context.read<InventoryCubit>().backToCategories();
+                        _searchController.clear();
+                      },
+                    )
+                  : null,
             ),
-          ),
-          Expanded(
-            child: BlocConsumer<InventoryCubit, InventoryState>(
-              listener: (context, state) {
-                if (state is InventoryError) {
-                  // SnackBarUtils.showError(context, state.message);
-                  SnackBarUtils.showError(context, 'لا يوجد اتصال بالإنترنت');
+            floatingActionButton: FloatingActionButton(
+              onPressed: () async {
+                final cubit = context.read<InventoryCubit>();
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddProductScreen(),
+                  ),
+                );
+                // Upon return, usually we want to refresh whatever view we are in
+                if (mounted && cubit.state is InventoryLoaded) {
+                  final s = cubit.state as InventoryLoaded;
+                  if (s.isProductView) {
+                    cubit.fetchProducts(
+                      categoryId: s.selectedCategoryId,
+                      query: _searchController.text,
+                    );
+                  } else {
+                    cubit.loadInitialData();
+                  }
                 }
               },
-              builder: (context, state) {
-                if (state is InventoryLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (state is InventoryLoaded) {
-                  final products = state.products;
-
-                  if (products.isEmpty) {
-                    return RefreshIndicator(
-                      onRefresh: () async {
-                        context.read<InventoryCubit>().loadInventory(
-                          query: _searchController.text,
-                        );
-                      },
-                      child: Stack(
-                        children: [
-                          ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                          ),
-                          const Center(child: Text('لا يوجد منتجات')),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return RefreshIndicator(
-                    onRefresh: () async {
-                      context.read<InventoryCubit>().loadInventory(
-                        query: _searchController.text,
-                      );
-                    },
+              child: const Icon(Icons.add),
+            ),
+            body: SafeArea(
+              child: Column(
+                children: [
+                  // Search Bar Area
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        // Total Count Widget (Visible only when not searching)
-                        if (_searchController.text.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 8.0,
-                              horizontal: 16.0,
-                            ),
-                            child: Row(
+                        if (_isScanning)
+                          InlineBarcodeScanner(
+                            onBarcodeDetected: (code) {
+                              setState(() {
+                                _searchController.text = code;
+                                _isScanning = false;
+                              });
+                              _onSearchChanged(code);
+                            },
+                            onClose: () => setState(() => _isScanning = false),
+                          ),
+                        TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            labelText: 'بحث عن منتج (اسم أو باركود)',
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
-                                  Icons.inventory_2_outlined,
-                                  size: 20,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'إجمالي الأصناف: ${state.totalProductCount}',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey,
+                                if (_searchController.text.isNotEmpty)
+                                  IconButton(
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      _onSearchChanged('');
+                                    },
                                   ),
+                                IconButton(
+                                  icon: Icon(
+                                    _isScanning
+                                        ? Icons.stop_circle
+                                        : Icons.qr_code_scanner,
+                                  ),
+                                  color: _isScanning ? Colors.red : null,
+                                  onPressed: () {
+                                    setState(() {
+                                      _isScanning = !_isScanning;
+                                    });
+                                  },
                                 ),
                               ],
                             ),
+                            border: const OutlineInputBorder(),
                           ),
-
-                        Expanded(
-                          child: ListView.builder(
-                            controller: _scrollController,
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            itemCount: state.hasReachedMax
-                                ? products.length
-                                : products.length + 1,
-                            itemBuilder: (context, index) {
-                              if (index >= products.length) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(16.0),
-                                  child: Center(
-                                    child: SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              final product = products[index];
-                              return Card(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                child: ListTile(
-                                  title: Text(
-                                    product.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text('الباركود: ${product.barcode}'),
-                                      Text(
-                                        'السعر: ${product.retailPrice} | الكمية: ${product.stockQuantity}',
-                                      ),
-                                    ],
-                                  ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.edit,
-                                          color: Colors.blue,
-                                        ),
-                                        onPressed: () async {
-                                          // خزن الـ Cubit قبل الـ Navigation
-                                          final inventoryCubit = context
-                                              .read<InventoryCubit>();
-
-                                          await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  EditProductScreen(
-                                                    product: product,
-                                                  ),
-                                            ),
-                                          );
-
-                                          // لما نرجع، نتأكد إننا لسه mounted ونعمل تحديث خفيف
-                                          if (mounted) {
-                                            inventoryCubit.loadInventory();
-                                          }
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.delete,
-                                          color: Colors.red,
-                                        ),
-                                        onPressed: () =>
-                                            _deleteProduct(product),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                          onChanged: _onSearchChanged,
                         ),
+
+                        // Total Count Text (Shown in Main View)
+                        if (state is InventoryLoaded && !state.isProductView)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'إجمالي عدد المنتجات: ${state.totalProductCount}',
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        // اسم التصنيف عند تصفح المنتجات داخل تصنيف
+                        if (state is InventoryLoaded &&
+                            state.isProductView &&
+                            state.selectedCategoryId != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'التصنيف: ${state.categories.firstWhere((c) => c.id == state.selectedCategoryId, orElse: () => state.categories.first).name}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.blue.shade800,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
-                  );
-                } else if (state is InventoryError) {
-                  return RefreshIndicator(
-                    onRefresh: () async {
-                      context.read<InventoryCubit>().loadInventory();
-                    },
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Container(
-                        height: MediaQuery.of(context).size.height - 200,
-                        alignment: Alignment.center,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.signal_wifi_connected_no_internet_4,
-                              size: 48,
-                              color: Colors.grey,
+                  ),
+
+                  Expanded(
+                    child: BlocConsumer<InventoryCubit, InventoryState>(
+                      listener: (context, state) {
+                        if (state is InventoryError) {
+                          SnackBarUtils.showError(
+                            context,
+                            'حدث خطأ: ${state.message}',
+                          );
+                        }
+                      },
+                      builder: (context, state) {
+                        if (state is InventoryLoading) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        } else if (state is InventoryLoaded) {
+                          if (state.isProductView) {
+                            return _buildProductList(state);
+                          } else {
+                            return _buildCategoryGrid(state);
+                          }
+                        } else if (state is InventoryError) {
+                          return Center(
+                            child: ElevatedButton(
+                              onPressed: () => context
+                                  .read<InventoryCubit>()
+                                  .loadInitialData(),
+                              child: const Text('إعادة المحاولة'),
                             ),
-                            const SizedBox(height: 16),
-                            const Text("لا يوجد اتصال بالإنترنت"),
-                            const SizedBox(height: 24),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                context.read<InventoryCubit>().loadInventory();
-                              },
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('إعادة المحاولة'),
-                            ),
-                          ],
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCategoryGrid(InventoryLoaded state) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        await context.read<InventoryCubit>().loadCategories();
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          children: [
+            // "All Products" Button
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 16),
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.blueAccent.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blueAccent),
+              ),
+              child: InkWell(
+                onTap: () {
+                  _searchController.clear();
+                  context.read<InventoryCubit>().fetchProducts();
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: const Center(
+                  child: Text(
+                    'عرض كل المنتجات',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueAccent,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Grid View
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 1.2,
+              ),
+              itemCount: state.categories.length,
+              itemBuilder: (context, index) {
+                final category = state.categories[index];
+                final color = _categoryColors[index % _categoryColors.length];
+
+                return InkWell(
+                  onTap: () {
+                    _searchController.clear();
+                    context.read<InventoryCubit>().fetchProducts(
+                      categoryId: category.id,
+                    );
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          category.name,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
                     ),
-                  );
-                }
-
-                // Initial state or unexpected
-                return const Center(child: CircularProgressIndicator());
+                  ),
+                );
               },
             ),
-          ),
-        ],
+
+            // زر إضافة تصنيف جديد
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showAddCategoryDialog(context),
+                  icon: const Icon(Icons.add_circle_outline, size: 28),
+                  label: const Text(
+                    'إضافة تصنيف جديد',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.blue.shade700,
+                    side: BorderSide(color: Colors.blue.shade300, width: 2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 80), // For FAB space
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductList(InventoryLoaded state) {
+    final products = state.products;
+
+    if (products.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(' لا يوجد منتجات'),
+            if (state.totalProductCount == 0 &&
+                state.selectedCategoryId == null &&
+                _searchController.text.isEmpty)
+              const Text('قم بإضافة منتجات جديدة'),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await context.read<InventoryCubit>().fetchProducts(
+          categoryId: state.selectedCategoryId,
+          query: _searchController.text,
+        );
+      },
+      child: ListView.builder(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: state.hasReachedMax ? products.length : products.length + 1,
+        itemBuilder: (context, index) {
+          if (index >= products.length) {
+            return const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          final product = products[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ListTile(
+              title: Text(
+                product.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text('الكمية:'),
+                      Text(
+                        ' ${product.stockQuantity} ',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text("سعر بيع القطاعي :"),
+                      Text(
+                        ' ${product.retailPrice} ',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text("سعر بيع الجمله :"),
+                      Text(
+                        ' ${product.wholesalePrice} ',
+                        style: TextStyle(
+                          color: Colors.brown,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.blue),
+                    onPressed: () async {
+                      final cubit = context.read<InventoryCubit>();
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              EditProductScreen(product: product),
+                        ),
+                      );
+                      if (mounted) {
+                        // Refresh items without resetting view
+                        cubit.fetchProducts(
+                          categoryId: state.selectedCategoryId,
+                          query: _searchController.text,
+                        );
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _deleteProduct(product),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

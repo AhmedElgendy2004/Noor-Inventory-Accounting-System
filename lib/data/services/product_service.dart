@@ -33,17 +33,27 @@ class ProductService {
     }
   }
 
-  /// Get products with optional search query and pagination
+  /// Get products with optional search query, category, and pagination
   Future<List<ProductModel>> getProducts({
     String? searchQuery,
+    String? categoryId,
     int? limit,
     int? offset,
   }) async {
     try {
       dynamic query = _supabase.from(SupabaseConstants.productsTable).select();
 
+      // Category Filter
+      if (categoryId != null && categoryId.isNotEmpty) {
+        query = query.eq('category_id', categoryId);
+      }
+
       if (searchQuery != null && searchQuery.isNotEmpty) {
         // Search mode: Filter by name or barcode
+        // Note: If combining with category, 'or' might need to be scoped carefully
+        // or applied as a filter on top of the base query.
+        // For simplicity with Supabase, .or() at top level acts as OR for the clauses inside,
+        // but AND with previous filters.
         query = query.or(
           'name.ilike.%$searchQuery%,barcode.ilike.%$searchQuery%',
         );

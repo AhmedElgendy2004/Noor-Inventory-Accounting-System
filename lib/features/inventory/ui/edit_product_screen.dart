@@ -336,72 +336,75 @@ class _EditProductScreenState extends State<EditProductScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('تعديل المنتج')),
-      body: BlocConsumer<InventoryCubit, InventoryState>(
-        listener: (context, state) {
-          if (state is InventorySuccess) {
-            SnackBarUtils.showSuccess(context, 'تم تعديل المنتج بنجاح');
+      body: SafeArea(
+        child: BlocConsumer<InventoryCubit, InventoryState>(
+          listener: (context, state) {
+            if (state is InventorySuccess) {
+              SnackBarUtils.showSuccess(context, 'تم تعديل المنتج بنجاح');
 
-            // إغلاق الشاشة فوراً عند النجاح كما طلبت
-            if (mounted) {
-              Navigator.pop(context);
+              // إغلاق الشاشة فوراً عند النجاح كما طلبت
+              if (mounted) {
+                Navigator.pop(context);
+              }
+            } else if (state is InventoryError) {
+              // SnackBarUtils.showError(context, state.message);
+              SnackBarUtils.showError(context, 'فشل التعديل');
             }
-          } else if (state is InventoryError) {
-            // SnackBarUtils.showError(context, state.message);
-            SnackBarUtils.showError(context, 'فشل التعديل');
-          }
-        },
-        builder: (context, state) {
-          if (state is InventoryLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          },
+          builder: (context, state) {
+            if (state is InventoryLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          // استخدام الـ Widget المشتركة
-          List<CategoryModel> categories = [];
-          if (state is InventoryLoaded) {
-            categories = state.categories;
-          }
+            // استخدام الـ Widget المشتركة
+            List<CategoryModel> categories = [];
+            if (state is InventoryLoaded) {
+              categories = state.categories;
+            }
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              await context.read<InventoryCubit>().loadCategories();
-            },
-            child: ProductFormContent(
-              formKey: _formKey,
-              controllers: _controllers,
-              isScanning: _isScanning,
-              saveButtonText: 'حفظ التعديلات',
-              categories: categories,
-              selectedCategoryId: _selectedCategoryId,
-              onCategoryChanged: (val) {
-                setState(() {
-                  _selectedCategoryId = val;
-                });
+            return RefreshIndicator(
+              onRefresh: () async {
+                await context.read<InventoryCubit>().loadCategories();
               },
-              onAddCategory: () => _showAddCategoryDialog(context),
-              isCalculatedExpiryMode: _isCalculatedExpiryMode,
-              onExpiryModeChanged: (val) {
-                setState(() {
-                  _isCalculatedExpiryMode = val;
-                  if (!val) {
-                    _productionDate = null;
-                    _controllers['productionDate']!.clear();
-                    _controllers['validityMonths']!.clear();
-                  }
-                });
-              },
-              onPickProductionDate: _pickProductionDate,
-              onToggleScanner: () => setState(() => _isScanning = !_isScanning),
-              onBarcodeDetected: (code) {
-                setState(() {
-                  _controllers['barcode']!.text = code;
-                  _isScanning = false;
-                });
-              },
-              onPickDate: _pickDate,
-              onSave: () => _handleUpdate(context),
-            ),
-          );
-        },
+              child: ProductFormContent(
+                formKey: _formKey,
+                controllers: _controllers,
+                isScanning: _isScanning,
+                saveButtonText: 'حفظ التعديلات',
+                categories: categories,
+                selectedCategoryId: _selectedCategoryId,
+                onCategoryChanged: (val) {
+                  setState(() {
+                    _selectedCategoryId = val;
+                  });
+                },
+                onAddCategory: () => _showAddCategoryDialog(context),
+                isCalculatedExpiryMode: _isCalculatedExpiryMode,
+                onExpiryModeChanged: (val) {
+                  setState(() {
+                    _isCalculatedExpiryMode = val;
+                    if (!val) {
+                      _productionDate = null;
+                      _controllers['productionDate']!.clear();
+                      _controllers['validityMonths']!.clear();
+                    }
+                  });
+                },
+                onPickProductionDate: _pickProductionDate,
+                onToggleScanner: () =>
+                    setState(() => _isScanning = !_isScanning),
+                onBarcodeDetected: (code) {
+                  setState(() {
+                    _controllers['barcode']!.text = code;
+                    _isScanning = false;
+                  });
+                },
+                onPickDate: _pickDate,
+                onSave: () => _handleUpdate(context),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

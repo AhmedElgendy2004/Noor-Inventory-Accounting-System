@@ -11,9 +11,28 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   InventoryCubit(this._productService) : super(InventoryInitial());
 
-  static const int _pageSize = 20;
-
+  static const int _pageSize = 10;
   List<CategoryModel> _cachedCategories = [];
+
+  // تحميل التصنيفات والعدد الإجمالي عند الدخول (للشاشة الرئيسية)
+  Future<void> loadInitialData() async {
+    emit(InventoryLoading());
+    try {
+      await loadCategories();
+      final totalCount = await _productService.getTotalProductsCount();
+
+      emit(
+        InventoryLoaded(
+          const [], // لا نحتاج منتجات في شبكة التصنيفات
+          categories: _cachedCategories,
+          totalProductCount: totalCount,
+          isProductView: false,
+        ),
+      );
+    } catch (e) {
+      emit(InventoryError(e.toString()));
+    }
+  }
 
   Future<void> loadCategories() async {
     try {
@@ -25,15 +44,108 @@ class InventoryCubit extends Cubit<InventoryState> {
       final data = response as List<dynamic>;
       _cachedCategories = data.map((e) => CategoryModel.fromJson(e)).toList();
 
-      // تجحديث الحالة الحالية إذا كانت Loaded بإضافة التصنيفات
       if (state is InventoryLoaded) {
         emit(
           (state as InventoryLoaded).copyWith(categories: _cachedCategories),
         );
       }
     } catch (e) {
-      // يمكن تجاهل الخطأ هنا أو طباعته، حيث أن فشل تحميل التصنيفات لا يوقف استخدام التطبيق
       print('Error loading categories: $e');
+    }
+  }
+
+  // الدالة الأساسية لجلب المنتجات (تدعم التصنيف، البحث، والتحميل الإضافي)
+  Future<void> fetchProducts({
+    String? categoryId,
+    String? query,
+    bool isLoadMore = false,
+  }) async {
+    // التأكد من وجود Categories (احتياط)
+    if (_cachedCategories.isEmpty) await loadCategories();
+
+    // التعامل مع الحالة الحالية
+    if (state is InventoryLoaded) {
+      final currentState = state as InventoryLoaded;
+
+      // 1. التحميل الإضافي (Pagination)
+      if (isLoadMore) {
+        if (currentState.hasReachedMax) return;
+
+        try {
+          final offset = currentState.products.length;
+          final newProducts = await _productService.getProducts(
+            searchQuery: query,
+            categoryId: categoryId,
+            limit: _pageSize,
+            offset: offset,
+          );
+
+          // منع التكرار
+          final allProducts = List.of(currentState.products)
+            ..addAll(newProducts);
+          // (اختياري) يمكن إضافة منطق لإزالة التكرار بواسطة ID إذا كانت قاعدة البيانات غير مستقرة في الترتيب
+
+          emit(
+            currentState.copyWith(
+              products: allProducts,
+              hasReachedMax: newProducts.length < _pageSize,
+            ),
+          );
+        } catch (e) {
+          // يمكن إصدار حالة خطأ خفيفة أو تجاهلها
+        }
+        return;
+      }
+    }
+
+    // 2. تحميل جديد (أول صفحة)
+    emit(InventoryLoading());
+    try {
+      // نحافظ على العدد الإجمالي إذا كان موجوداً، أو نحدثه عند عدم البحث
+      int totalCount = 0;
+      if (state is InventoryLoaded) {
+        totalCount = (state as InventoryLoaded).totalProductCount;
+      }
+      if (totalCount == 0 && (query == null || query.isEmpty)) {
+        totalCount = await _productService.getTotalProductsCount();
+      }
+
+      final products = await _productService.getProducts(
+        searchQuery: query,
+        categoryId: categoryId,
+        limit: _pageSize,
+        offset: 0,
+      );
+
+      emit(
+        InventoryLoaded(
+          products,
+          categories: _cachedCategories,
+          hasReachedMax: products.length < _pageSize,
+          totalProductCount: totalCount,
+          selectedCategoryId: categoryId,
+          isProductView: true, // الانتقال لعرض القائمة
+        ),
+      );
+    } catch (e) {
+      emit(InventoryError(e.toString()));
+    }
+  }
+
+  void backToCategories() {
+    if (state is InventoryLoaded) {
+      final currentState = state as InventoryLoaded;
+      emit(
+        currentState.copyWith(
+          isProductView: false,
+          selectedCategoryId: null,
+          products: [], // تفريغ المنتجات لتوفير الذاكرة
+          hasReachedMax: false,
+        ),
+      );
+    } else {
+      // Fallback
+      loadInitialData();
     }
   }
 
@@ -48,12 +160,10 @@ class InventoryCubit extends Cubit<InventoryState> {
       final newCategory = CategoryModel.fromJson(response);
       _cachedCategories.add(newCategory);
 
-      // تحديث الواجهة فوراً
       if (state is InventoryLoaded) {
         final currentCategories = List<CategoryModel>.from(
           (state as InventoryLoaded).categories,
         );
-        // تأكد من عدم التكرار إذا تم إعادة الجلب
         if (!currentCategories.any((element) => element.id == newCategory.id)) {
           currentCategories.add(newCategory);
           currentCategories.sort((a, b) => a.name.compareTo(b.name));
@@ -62,81 +172,10 @@ class InventoryCubit extends Cubit<InventoryState> {
           );
         }
       } else {
-        // إذا لم تكن الحالة Loaded (نادر الحدوث عند الإضافة)
         emit(InventoryLoaded([], categories: _cachedCategories));
       }
     } catch (e) {
-      print('Error adding category: $e');
-      throw e; // رمي الخطأ لتمكين الواجهة من إظهار رسالة
-    }
-  }
-
-  Future<void> loadInventory({String? query, bool loadMore = false}) async {
-    // تحميل التصنيفات في البداية إذا لم تكن موجودة
-    if (_cachedCategories.isEmpty) {
-      await loadCategories();
-    }
-
-    if (loadMore) {
-      if (state is InventoryLoaded) {
-        final currentState = state as InventoryLoaded;
-        if (currentState.hasReachedMax) return;
-
-        try {
-          final offset = currentState.products.length;
-          final newProducts = await _productService.getProducts(
-            limit: _pageSize,
-            offset: offset,
-          );
-
-          emit(
-            currentState.copyWith(
-              products: List.of(currentState.products)..addAll(newProducts),
-              // الحفاظ على التصنيفات عند التحميل الإضافي
-              categories: _cachedCategories,
-              hasReachedMax: newProducts.length < _pageSize,
-            ),
-          );
-        } catch (e) {
-          // ignore error
-        }
-      }
-      return;
-    }
-
-    // Initial Load or Search
-    emit(InventoryLoading());
-    try {
-      if (query != null && query.isNotEmpty) {
-        final products = await _productService.getProducts(searchQuery: query);
-        emit(
-          InventoryLoaded(
-            products,
-            categories: _cachedCategories,
-            hasReachedMax: true,
-            totalProductCount: products.length,
-          ),
-        );
-      } else {
-        final results = await Future.wait([
-          _productService.getProducts(limit: _pageSize, offset: 0),
-          _productService.getTotalProductsCount(),
-        ]);
-
-        final products = results[0] as List<ProductModel>;
-        final totalCount = results[1] as int;
-
-        emit(
-          InventoryLoaded(
-            products,
-            categories: _cachedCategories,
-            hasReachedMax: products.length < _pageSize,
-            totalProductCount: totalCount,
-          ),
-        );
-      }
-    } catch (e) {
-      emit(InventoryError(e.toString()));
+      rethrow;
     }
   }
 
@@ -145,8 +184,14 @@ class InventoryCubit extends Cubit<InventoryState> {
     try {
       await _productService.addProduct(product);
       emit(const InventorySuccess('تم إضافة المنتج بنجاح'));
-      // إعادة الحالة إلى Loaded مع التصنيفات المخزنة لضمان استمرار ظهورها في شاشة الإضافة
-      emit(InventoryLoaded([], categories: _cachedCategories));
+      // العودة للحالة الطبيعية مع وجود التصنيفات
+      emit(
+        InventoryLoaded(
+          const [],
+          categories: _cachedCategories,
+          isProductView: false, // العودة للشبكة
+        ),
+      );
     } catch (e) {
       emit(InventoryError(e.toString()));
     }
@@ -157,19 +202,26 @@ class InventoryCubit extends Cubit<InventoryState> {
     try {
       await _productService.updateProduct(product);
       emit(const InventorySuccess('تم تحديث المنتج بنجاح'));
+      // يمكن إعادة تحميل القائمة الحالية إذا كنا في وضع العرض
     } catch (e) {
       emit(InventoryError(e.toString()));
     }
   }
 
   Future<void> deleteProduct(String id) async {
-    // Note: We might want to keep the current list visible while deleting,
-    // but for simplicity we will verify deletion by reloading.
-    // Or we could emit Loading -> Success -> Reload.
-    // Given the prompt: "Call _productService.deleteProduct(id). Then call loadInventory() to refresh."
     try {
       await _productService.deleteProduct(id);
-      await loadInventory();
+      // Refresh current view logic
+      if (state is InventoryLoaded) {
+        final currentState = state as InventoryLoaded;
+        // Refresh list
+        await fetchProducts(
+          categoryId: currentState.selectedCategoryId,
+          // We can't easily preserve query here without storing it in state,
+          // but for simplicity we reload current category or all.
+          query: null,
+        );
+      }
     } catch (e) {
       emit(InventoryError(e.toString()));
     }

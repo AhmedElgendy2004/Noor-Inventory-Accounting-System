@@ -18,12 +18,17 @@ class InventoryLoaded extends InventoryState {
   final List<CategoryModel> categories;
   final bool hasReachedMax;
   final int totalProductCount;
+  final String? selectedCategoryId; // null means "All" if in product view
+  final bool
+  isProductView; // true if showing product list, false if showing category grid
 
   const InventoryLoaded(
     this.products, {
     this.categories = const [],
     this.hasReachedMax = false,
     this.totalProductCount = 0,
+    this.selectedCategoryId,
+    this.isProductView = false,
   });
 
   InventoryLoaded copyWith({
@@ -31,12 +36,16 @@ class InventoryLoaded extends InventoryState {
     List<CategoryModel>? categories,
     bool? hasReachedMax,
     int? totalProductCount,
+    String? selectedCategoryId,
+    bool? isProductView,
   }) {
     return InventoryLoaded(
       products ?? this.products,
       categories: categories ?? this.categories,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       totalProductCount: totalProductCount ?? this.totalProductCount,
+      selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
+      isProductView: isProductView ?? this.isProductView,
     );
   }
 
@@ -46,6 +55,8 @@ class InventoryLoaded extends InventoryState {
     categories,
     hasReachedMax,
     totalProductCount,
+    selectedCategoryId,
+    isProductView,
   ];
 }
 
