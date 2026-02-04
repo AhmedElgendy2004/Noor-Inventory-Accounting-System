@@ -3,8 +3,6 @@ class ProductModel {
   final String name;
   final String barcode;
   final String? brandCompany;
-  final String? sizeVolume;
-  final String? color;
   final String? unit;
   final int stockQuantity;
   final int minStockLevel;
@@ -21,8 +19,6 @@ class ProductModel {
     required this.name,
     required this.barcode,
     this.brandCompany,
-    this.sizeVolume,
-    this.color,
     this.unit,
     required this.stockQuantity,
     required this.minStockLevel,
@@ -41,8 +37,6 @@ class ProductModel {
       name: json['name'] as String,
       barcode: json['barcode'] as String,
       brandCompany: json['brand_company'] as String?,
-      sizeVolume: json['size_volume'] as String?,
-      color: json['color'] as String?,
       unit: json['unit'] as String?,
       stockQuantity: json['stock_quantity'] as int? ?? 0,
       minStockLevel: json['min_stock_level'] as int? ?? 0,
@@ -65,8 +59,6 @@ class ProductModel {
       'name': name,
       'barcode': barcode,
       'brand_company': brandCompany,
-      'size_volume': sizeVolume,
-      'color': color,
       'unit': unit,
       'stock_quantity': stockQuantity,
       'min_stock_level': minStockLevel,

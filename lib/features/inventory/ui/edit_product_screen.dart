@@ -55,8 +55,6 @@ class _EditProductScreenState extends State<EditProductScreen> {
       'name': TextEditingController(text: p.name),
       'barcode': TextEditingController(text: p.barcode),
       'brand': TextEditingController(text: p.brandCompany ?? ''),
-      'size': TextEditingController(text: p.sizeVolume ?? ''),
-      'color': TextEditingController(text: p.color ?? ''),
       'stock': TextEditingController(text: p.stockQuantity.toString()),
       'minStock': TextEditingController(text: p.minStockLevel.toString()),
       'purchasePrice': TextEditingController(text: p.purchasePrice.toString()),
@@ -195,12 +193,6 @@ class _EditProductScreenState extends State<EditProductScreen> {
         brandCompany: _controllers['brand']!.text.isEmpty
             ? null
             : _controllers['brand']!.text,
-        sizeVolume: _controllers['size']!.text.isEmpty
-            ? null
-            : _controllers['size']!.text,
-        color: _controllers['color']!.text.isEmpty
-            ? null
-            : _controllers['color']!.text,
 
         stockQuantity: int.tryParse(_controllers['stock']!.text) ?? 0,
         minStockLevel: int.tryParse(_controllers['minStock']!.text) ?? 0,

@@ -43,8 +43,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
       'name': TextEditingController(),
       'barcode': TextEditingController(),
       'brand': TextEditingController(),
-      'size': TextEditingController(),
-      'color': TextEditingController(),
       'stock': TextEditingController(),
       'minStock': TextEditingController(text: kDefaultMinStock),
       'purchasePrice': TextEditingController(),
@@ -167,8 +165,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
     for (var c in _controllers.values) {
       c.clear();
     }
-    _controllers['minStock']!.text = '5';
-    _controllers['expiryAlert']!.text = '30';
+    _controllers['minStock']!.text = kDefaultMinStock;
+    _controllers['expiryAlert']!.text = kDefaultExpiryAlert;
     setState(() {
       _selectedExpiryDate = null;
       _isScanning = false;
@@ -183,12 +181,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
         brandCompany: _controllers['brand']!.text.isEmpty
             ? null
             : _controllers['brand']!.text,
-        sizeVolume: _controllers['size']!.text.isEmpty
-            ? null
-            : _controllers['size']!.text,
-        color: _controllers['color']!.text.isEmpty
-            ? null
-            : _controllers['color']!.text,
         unit: 'piece',
         stockQuantity: int.tryParse(_controllers['stock']!.text) ?? 0,
         minStockLevel: int.tryParse(_controllers['minStock']!.text) ?? 0,

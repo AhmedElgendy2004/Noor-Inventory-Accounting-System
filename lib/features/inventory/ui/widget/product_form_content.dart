@@ -114,16 +114,6 @@ class ProductFormContent extends StatelessWidget {
 
             // 4. قسم الخصائص والصلاحية
             const SectionTitle('تفاصيل إضافية'),
-            RowFields(
-              field1: CustomTextField(
-                controller: controllers['size']!,
-                label: 'الحجم/الوزن',
-              ),
-              field2: CustomTextField(
-                controller: controllers['color']!,
-                label: 'اللون',
-              ),
-            ),
 
             CustomTextField(
               controller: controllers['expiryDate']!,
