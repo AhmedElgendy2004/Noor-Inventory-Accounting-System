@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -10,6 +11,8 @@ class CustomTextField extends StatelessWidget {
   final bool readOnly;
   final VoidCallback? onTap;
   final bool enabled;
+  final String? Function(String?)? validator;
+  final List<TextInputFormatter>? inputFormatters;
 
   const CustomTextField({
     Key? key,
@@ -22,6 +25,8 @@ class CustomTextField extends StatelessWidget {
     this.readOnly = false,
     this.onTap,
     this.enabled = true,
+    this.validator,
+    this.inputFormatters,
   }) : super(key: key);
 
   @override
@@ -36,6 +41,7 @@ class CustomTextField extends StatelessWidget {
             enabled: enabled,
             readOnly: readOnly,
             onTap: onTap,
+            inputFormatters: inputFormatters,
             // لو رقم بنظهر كيبورد الأرقام، لو نص بنظهر العادي
             keyboardType: isNumber
                 ? const TextInputType.numberWithOptions(decimal: true)
@@ -50,11 +56,15 @@ class CustomTextField extends StatelessWidget {
               filled: true,
               fillColor: readOnly ? Colors.grey[100] : Colors.white,
             ),
-            validator: isRequired
-                ? (value) => (value == null || value.isEmpty)
-                      ? 'هذا الحقل مطلوب'
-                      : null
-                : null,
+            validator: (value) {
+              if (isRequired && (value == null || value.isEmpty)) {
+                return 'هذا الحقل مطلوب';
+              }
+              if (validator != null) {
+                return validator!(value);
+              }
+              return null;
+            },
           );
         },
       ),

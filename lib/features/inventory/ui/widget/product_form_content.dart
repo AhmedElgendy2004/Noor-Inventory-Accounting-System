@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/utils/inline_barcode_scanner.dart';
 import '../../../../data/models/category_model.dart';
 import 'custom_text_field.dart';
@@ -53,6 +54,7 @@ class ProductFormContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16.0),
       child: Form(
         key: formKey,
@@ -79,6 +81,9 @@ class ProductFormContent extends StatelessWidget {
               label: 'الباركود',
               icon: Icons.qr_code,
               isRequired: true,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
+              ],
               suffixIcon: IconButton(
                 icon: Icon(
                   isScanning ? Icons.stop_circle : Icons.qr_code_scanner,
@@ -147,12 +152,36 @@ class ProductFormContent extends StatelessWidget {
                 label: 'سعر القطاعي',
                 isNumber: true,
                 isRequired: true,
+                validator: (val) {
+                  final purchase =
+                      double.tryParse(controllers['purchasePrice']!.text) ?? 0;
+                  final retail = double.tryParse(val ?? '') ?? 0;
+                  if (retail <= purchase) {
+                    return 'يجب أن يكون أكبر من سعر الشراء';
+                  }
+                  return null;
+                },
               ),
             ),
             CustomTextField(
               controller: controllers['wholesalePrice']!,
               label: 'سعر الجملة',
               isNumber: true,
+              validator: (val) {
+                if (val == null || val.isEmpty) return null;
+                final purchase =
+                    double.tryParse(controllers['purchasePrice']!.text) ?? 0;
+                final retail =
+                    double.tryParse(controllers['retailPrice']!.text) ?? 0;
+                final wholesale = double.tryParse(val) ?? 0;
+
+                if (wholesale <= purchase)
+                  return 'يجب أن يكون أكبر من سعر الشراء';
+                if (retail > 0 && wholesale > retail) {
+                  return 'يجب أن يكون أقل من (أو يساوي) سعر القطاعي';
+                }
+                return null;
+              },
             ),
 
             // 3. قسم المخزن

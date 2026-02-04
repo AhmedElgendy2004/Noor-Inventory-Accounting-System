@@ -125,16 +125,21 @@ class _EditProductScreenState extends State<EditProductScreen> {
   // يمكن نقلها لملف utils لاحقاً
   Future<void> _pickDateGeneral(
     DateTime? initialDate,
-    Function(DateTime) onConfirm,
-  ) async {
+    Function(DateTime) onConfirm, {
+    required int startYear,
+    required int endYear,
+  }) async {
     final now = DateTime.now();
     int selectedMonth = initialDate?.month ?? now.month;
     int selectedYear = initialDate?.year ?? now.year;
 
-    final List<int> years = List.generate(
-      11,
-      (index) => (now.year - 5) + index,
-    );
+    // التأكد من أن السنة المختارة تقع ضمن النطاق
+    if (selectedYear < startYear) selectedYear = startYear;
+    if (selectedYear > endYear) selectedYear = endYear;
+
+    // توليد قائمة السنين بناءً على الحدود المرسلة
+    final int count = endYear - startYear + 1;
+    final List<int> years = List.generate(count, (index) => startYear + index);
 
     await showModalBottomSheet(
       context: context,
@@ -193,9 +198,9 @@ class _EditProductScreenState extends State<EditProductScreen> {
                     Expanded(
                       child: CupertinoPicker(
                         scrollController: FixedExtentScrollController(
-                          initialItem: years.contains(selectedYear)
+                          initialItem: years.indexOf(selectedYear) != -1
                               ? years.indexOf(selectedYear)
-                              : 5,
+                              : 0,
                         ),
                         itemExtent: 40,
                         onSelectedItemChanged: (int index) =>
@@ -216,22 +221,34 @@ class _EditProductScreenState extends State<EditProductScreen> {
   }
 
   Future<void> _pickDate() async {
-    await _pickDateGeneral(_selectedExpiryDate, (date) {
-      setState(() {
-        _selectedExpiryDate = date;
-        _controllers['expiryDate']!.text = _formatDateToArabic(date);
-      });
-    });
+    final now = DateTime.now();
+    await _pickDateGeneral(
+      _selectedExpiryDate,
+      (date) {
+        setState(() {
+          _selectedExpiryDate = date;
+          _controllers['expiryDate']!.text = _formatDateToArabic(date);
+        });
+      },
+      startYear: now.year,
+      endYear: now.year + 10,
+    );
   }
 
   Future<void> _pickProductionDate() async {
-    await _pickDateGeneral(_productionDate, (date) {
-      setState(() {
-        _productionDate = date;
-        _controllers['productionDate']!.text = _formatDateToArabic(date);
-        _calculateExpiry();
-      });
-    });
+    final now = DateTime.now();
+    await _pickDateGeneral(
+      _productionDate,
+      (date) {
+        setState(() {
+          _productionDate = date;
+          _controllers['productionDate']!.text = _formatDateToArabic(date);
+          _calculateExpiry();
+        });
+      },
+      startYear: now.year - 20,
+      endYear: now.year,
+    );
   }
 
   // عرض نافذة إضافة تصنيف
@@ -245,7 +262,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
           controller: _categoryController,
           decoration: const InputDecoration(
             labelText: 'اسم التصنيف',
-            hintText: 'مثال: إلكترونيات',
+            hintText: 'مثال: مستحضرات تجميل',
           ),
         ),
         actions: [
@@ -269,7 +286,8 @@ class _EditProductScreenState extends State<EditProductScreen> {
                     })
                     .catchError((e) {
                       Navigator.pop(context);
-                      SnackBarUtils.showError(context, 'فشل الإضافة: $e');
+                      // SnackBarUtils.showError(context, 'فشل الإضافة: $e');
+                      SnackBarUtils.showError(context, 'فشل الإضافة');
                     });
               }
             },
@@ -328,7 +346,8 @@ class _EditProductScreenState extends State<EditProductScreen> {
               Navigator.pop(context);
             }
           } else if (state is InventoryError) {
-            SnackBarUtils.showError(context, state.message);
+            // SnackBarUtils.showError(context, state.message);
+            SnackBarUtils.showError(context, 'فشل التعديل');
           }
         },
         builder: (context, state) {
@@ -342,40 +361,45 @@ class _EditProductScreenState extends State<EditProductScreen> {
             categories = state.categories;
           }
 
-          return ProductFormContent(
-            formKey: _formKey,
-            controllers: _controllers,
-            isScanning: _isScanning,
-            saveButtonText: 'حفظ التعديلات',
-            categories: categories,
-            selectedCategoryId: _selectedCategoryId,
-            onCategoryChanged: (val) {
-              setState(() {
-                _selectedCategoryId = val;
-              });
+          return RefreshIndicator(
+            onRefresh: () async {
+              await context.read<InventoryCubit>().loadCategories();
             },
-            onAddCategory: () => _showAddCategoryDialog(context),
-            isCalculatedExpiryMode: _isCalculatedExpiryMode,
-            onExpiryModeChanged: (val) {
-              setState(() {
-                _isCalculatedExpiryMode = val;
-                if (!val) {
-                  _productionDate = null;
-                  _controllers['productionDate']!.clear();
-                  _controllers['validityMonths']!.clear();
-                }
-              });
-            },
-            onPickProductionDate: _pickProductionDate,
-            onToggleScanner: () => setState(() => _isScanning = !_isScanning),
-            onBarcodeDetected: (code) {
-              setState(() {
-                _controllers['barcode']!.text = code;
-                _isScanning = false;
-              });
-            },
-            onPickDate: _pickDate,
-            onSave: () => _handleUpdate(context),
+            child: ProductFormContent(
+              formKey: _formKey,
+              controllers: _controllers,
+              isScanning: _isScanning,
+              saveButtonText: 'حفظ التعديلات',
+              categories: categories,
+              selectedCategoryId: _selectedCategoryId,
+              onCategoryChanged: (val) {
+                setState(() {
+                  _selectedCategoryId = val;
+                });
+              },
+              onAddCategory: () => _showAddCategoryDialog(context),
+              isCalculatedExpiryMode: _isCalculatedExpiryMode,
+              onExpiryModeChanged: (val) {
+                setState(() {
+                  _isCalculatedExpiryMode = val;
+                  if (!val) {
+                    _productionDate = null;
+                    _controllers['productionDate']!.clear();
+                    _controllers['validityMonths']!.clear();
+                  }
+                });
+              },
+              onPickProductionDate: _pickProductionDate,
+              onToggleScanner: () => setState(() => _isScanning = !_isScanning),
+              onBarcodeDetected: (code) {
+                setState(() {
+                  _controllers['barcode']!.text = code;
+                  _isScanning = false;
+                });
+              },
+              onPickDate: _pickDate,
+              onSave: () => _handleUpdate(context),
+            ),
           );
         },
       ),

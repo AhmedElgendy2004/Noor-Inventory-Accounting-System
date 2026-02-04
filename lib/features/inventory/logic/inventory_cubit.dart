@@ -145,7 +145,8 @@ class InventoryCubit extends Cubit<InventoryState> {
     try {
       await _productService.addProduct(product);
       emit(const InventorySuccess('تم إضافة المنتج بنجاح'));
-      // Reload inventory after success if needed, or let UI handle it
+      // إعادة الحالة إلى Loaded مع التصنيفات المخزنة لضمان استمرار ظهورها في شاشة الإضافة
+      emit(InventoryLoaded([], categories: _cachedCategories));
     } catch (e) {
       emit(InventoryError(e.toString()));
     }

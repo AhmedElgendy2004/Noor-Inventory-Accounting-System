@@ -108,17 +108,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
   // دالة اختيار التاريخ (سنة وشهر فقط - عربي)
   Future<void> _pickDateGeneral(
     DateTime? initialDate,
-    Function(DateTime) onConfirm,
-  ) async {
+    Function(DateTime) onConfirm, {
+    required int startYear,
+    required int endYear,
+  }) async {
     final now = DateTime.now();
     int selectedMonth = initialDate?.month ?? now.month;
     int selectedYear = initialDate?.year ?? now.year;
 
-    // توليد قائمة سنين (السنة الحالية +/- 5)
-    final List<int> years = List.generate(
-      11,
-      (index) => (now.year - 5) + index,
-    );
+    // التأكد من أن السنة المختارة تقع ضمن النطاق
+    if (selectedYear < startYear) selectedYear = startYear;
+    if (selectedYear > endYear) selectedYear = endYear;
+
+    // توليد قائمة السنين بناءً على الحدود المرسلة
+    final int count = endYear - startYear + 1;
+    final List<int> years = List.generate(count, (index) => startYear + index);
 
     await showModalBottomSheet(
       context: context,
@@ -179,7 +183,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         scrollController: FixedExtentScrollController(
                           initialItem: years.indexOf(selectedYear) != -1
                               ? years.indexOf(selectedYear)
-                              : 5,
+                              : 0,
                         ),
                         itemExtent: 40,
                         onSelectedItemChanged: (int index) =>
@@ -200,23 +204,35 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Future<void> _pickDate() async {
-    await _pickDateGeneral(_selectedExpiryDate, (date) {
-      setState(() {
-        _selectedExpiryDate = date;
-        // في الوضع المباشر، نعرض التاريخ المختار
-        _controllers['expiryDate']!.text = _formatDateToArabic(date);
-      });
-    });
+    final now = DateTime.now();
+    await _pickDateGeneral(
+      _selectedExpiryDate,
+      (date) {
+        setState(() {
+          _selectedExpiryDate = date;
+          // في الوضع المباشر، نعرض التاريخ المختار
+          _controllers['expiryDate']!.text = _formatDateToArabic(date);
+        });
+      },
+      startYear: now.year,
+      endYear: now.year + 10,
+    );
   }
 
   Future<void> _pickProductionDate() async {
-    await _pickDateGeneral(_productionDate, (date) {
-      setState(() {
-        _productionDate = date;
-        _controllers['productionDate']!.text = _formatDateToArabic(date);
-        _calculateExpiry(); // إعادة الحساب عند تغيير تاريخ الإنتاج
-      });
-    });
+    final now = DateTime.now();
+    await _pickDateGeneral(
+      _productionDate,
+      (date) {
+        setState(() {
+          _productionDate = date;
+          _controllers['productionDate']!.text = _formatDateToArabic(date);
+          _calculateExpiry(); // إعادة الحساب عند تغيير تاريخ الإنتاج
+        });
+      },
+      startYear: now.year - 20,
+      endYear: now.year,
+    );
   }
 
   void _clearForm() {
@@ -246,7 +262,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           controller: _categoryController,
           decoration: const InputDecoration(
             labelText: 'اسم التصنيف',
-            hintText: 'مثال: إلكترونيات',
+            hintText: 'مثال: مستحضرات تجميل',
           ),
         ),
         actions: [
@@ -270,7 +286,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     })
                     .catchError((e) {
                       Navigator.pop(context);
-                      SnackBarUtils.showError(context, 'فشل الإضافة: $e');
+                      SnackBarUtils.showError(context, 'فشل الإضافة');
                     });
               }
             },
@@ -316,7 +332,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
             SnackBarUtils.showSuccess(context, 'تمت الإضافة بنجاح');
             _clearForm();
           } else if (state is InventoryError) {
-            SnackBarUtils.showError(context, state.message);
+                     // SnackBarUtils.showError(context, 'فشل الإضافة: $e');
+            SnackBarUtils.showError(context, 'فشل الإضافة');
+
           }
         },
         builder: (context, state) {

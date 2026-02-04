@@ -164,7 +164,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
             child: BlocConsumer<InventoryCubit, InventoryState>(
               listener: (context, state) {
                 if (state is InventoryError) {
-                  SnackBarUtils.showError(context, state.message);
+                  // SnackBarUtils.showError(context, state.message);
+                  SnackBarUtils.showError(context, 'لا يوجد اتصال بالإنترنت');
                 }
               },
               builder: (context, state) {
@@ -174,7 +175,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   final products = state.products;
 
                   if (products.isEmpty) {
-                    return const Center(child: Text('لا يوجد منتجات'));
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        context.read<InventoryCubit>().loadInventory(
+                          query: _searchController.text,
+                        );
+                      },
+                      child: Stack(
+                        children: [
+                          ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                          ),
+                          const Center(child: Text('لا يوجد منتجات')),
+                        ],
+                      ),
+                    );
                   }
 
                   return RefreshIndicator(
@@ -306,24 +321,36 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ),
                   );
                 } else if (state is InventoryError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        //   Text(state.message),
-                        Icon(
-                          Icons.signal_wifi_connected_no_internet_4,
-                          size: 48,
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      context.read<InventoryCubit>().loadInventory();
+                    },
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Container(
+                        height: MediaQuery.of(context).size.height - 200,
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.signal_wifi_connected_no_internet_4,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text("لا يوجد اتصال بالإنترنت"),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                context.read<InventoryCubit>().loadInventory();
+                              },
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('إعادة المحاولة'),
+                            ),
+                          ],
                         ),
-                        Text("لا يوجد اتصال بالإنترنت"),
-                        const SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () {
-                            context.read<InventoryCubit>().loadInventory();
-                          },
-                          child: const Text('إعادة المحاولة'),
-                        ),
-                      ],
+                      ),
                     ),
                   );
                 }
