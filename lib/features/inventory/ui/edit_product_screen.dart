@@ -1,4 +1,3 @@
-import 'package:al_noor_gallery/core/constants/constants.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,14 +7,16 @@ import '../logic/inventory_cubit.dart';
 import '../logic/inventory_state.dart';
 import 'widget/product_form_content.dart';
 
-class AddProductScreen extends StatefulWidget {
-  const AddProductScreen({Key? key}) : super(key: key);
+class EditProductScreen extends StatefulWidget {
+  // هذا المتغير إلزامي لأننا في شاشة تعديل
+  final ProductModel product;
+  const EditProductScreen({Key? key, required this.product}) : super(key: key);
 
   @override
-  State<AddProductScreen> createState() => _AddProductScreenState();
+  State<EditProductScreen> createState() => _EditProductScreenState();
 }
 
-class _AddProductScreenState extends State<AddProductScreen> {
+class _EditProductScreenState extends State<EditProductScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // قائمة الشهور العربية
@@ -34,29 +35,45 @@ class _AddProductScreenState extends State<AddProductScreen> {
     "ديسمبر",
   ];
 
+  // تهيئة الكنترولرز
   late final Map<String, TextEditingController> _controllers;
+  bool _isScanning = false;
+  DateTime? _selectedExpiryDate;
 
   @override
   void initState() {
     super.initState();
-    _controllers = {
-      'name': TextEditingController(),
-      'barcode': TextEditingController(),
-      'brand': TextEditingController(),
-      'size': TextEditingController(),
-      'color': TextEditingController(),
-      'stock': TextEditingController(),
-      'minStock': TextEditingController(text: kDefaultMinStock),
-      'purchasePrice': TextEditingController(),
-      'retailPrice': TextEditingController(),
-      'wholesalePrice': TextEditingController(),
-      'expiryDate': TextEditingController(),
-      'expiryAlert': TextEditingController(text: kDefaultExpiryAlert),
-    };
+    _initControllers();
   }
 
-  bool _isScanning = false;
-  DateTime? _selectedExpiryDate;
+  // تعبئة البيانات من المنتج الموجود
+  void _initControllers() {
+    final p = widget.product;
+    _selectedExpiryDate = p.expiryDate;
+
+    _controllers = {
+      'name': TextEditingController(text: p.name),
+      'barcode': TextEditingController(text: p.barcode),
+      'brand': TextEditingController(text: p.brandCompany ?? ''),
+      'size': TextEditingController(text: p.sizeVolume ?? ''),
+      'color': TextEditingController(text: p.color ?? ''),
+      'stock': TextEditingController(text: p.stockQuantity.toString()),
+      'minStock': TextEditingController(text: p.minStockLevel.toString()),
+      'purchasePrice': TextEditingController(text: p.purchasePrice.toString()),
+      'retailPrice': TextEditingController(text: p.retailPrice.toString()),
+      'wholesalePrice': TextEditingController(
+        text: p.wholesalePrice.toString(),
+      ),
+      'expiryAlert': TextEditingController(
+        text: p.expiryAlertDays?.toString() ?? '',
+      ),
+      'expiryDate': TextEditingController(
+        text: p.expiryDate != null
+            ? p.expiryDate!.toIso8601String().split('T')[0]
+            : '',
+      ),
+    };
+  }
 
   @override
   void dispose() {
@@ -66,7 +83,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     super.dispose();
   }
 
-  // دالة اختيار التاريخ (سنة وشهر فقط - عربي)
   Future<void> _pickDate() async {
     final now = DateTime.now();
     int selectedMonth = _selectedExpiryDate?.month ?? now.month;
@@ -163,21 +179,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  void _clearForm() {
-    for (var c in _controllers.values) {
-      c.clear();
-    }
-    _controllers['minStock']!.text = '5';
-    _controllers['expiryAlert']!.text = '30';
-    setState(() {
-      _selectedExpiryDate = null;
-      _isScanning = false;
-    });
-  }
-
-  void _handleAdd(BuildContext context) {
+  // دالة الحفظ الخاصة بالتعديل
+  void _handleUpdate(BuildContext context) {
     if (_formKey.currentState!.validate()) {
-      final product = ProductModel(
+      // الحفاظ على البيانات القديمة غير الظاهرة في الفورم
+      final updatedProduct = ProductModel(
+        id: widget.product.id, // مهم جداً للتحديث
+        supplierId: widget.product.supplierId, // الحفاظ على المورد
+        lastPurchaseDate:
+            widget.product.lastPurchaseDate, // الحفاظ على تاريخ الشراء
+        unit: widget.product.unit, // الحفاظ على الوحدة
+        // البيانات المعدلة
         name: _controllers['name']!.text,
         barcode: _controllers['barcode']!.text,
         brandCompany: _controllers['brand']!.text.isEmpty
@@ -189,7 +201,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         color: _controllers['color']!.text.isEmpty
             ? null
             : _controllers['color']!.text,
-        unit: 'piece',
+
         stockQuantity: int.tryParse(_controllers['stock']!.text) ?? 0,
         minStockLevel: int.tryParse(_controllers['minStock']!.text) ?? 0,
         purchasePrice:
@@ -201,19 +213,24 @@ class _AddProductScreenState extends State<AddProductScreen> {
         expiryDate: _selectedExpiryDate,
       );
 
-      context.read<InventoryCubit>().addProduct(product);
+      // استدعاء دالة التحديث
+      context.read<InventoryCubit>().updateProduct(updatedProduct);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('إضافة منتج جديد')),
+      appBar: AppBar(title: const Text('تعديل المنتج')),
       body: BlocConsumer<InventoryCubit, InventoryState>(
         listener: (context, state) {
           if (state is InventorySuccess) {
-            SnackBarUtils.showSuccess(context, 'تمت الإضافة بنجاح');
-            _clearForm();
+            SnackBarUtils.showSuccess(context, 'تم تعديل المنتج بنجاح');
+
+            // إغلاق الشاشة فوراً عند النجاح كما طلبت
+            if (mounted) {
+              Navigator.pop(context);
+            }
           } else if (state is InventoryError) {
             SnackBarUtils.showError(context, state.message);
           }
@@ -227,7 +244,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
             formKey: _formKey,
             controllers: _controllers,
             isScanning: _isScanning,
-            saveButtonText: 'حفظ المنتج',
+            saveButtonText: 'حفظ التعديلات',
             onToggleScanner: () => setState(() => _isScanning = !_isScanning),
             onBarcodeDetected: (code) {
               setState(() {
@@ -236,7 +253,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               });
             },
             onPickDate: _pickDate,
-            onSave: () => _handleAdd(context),
+            onSave: () => _handleUpdate(context),
           );
         },
       ),

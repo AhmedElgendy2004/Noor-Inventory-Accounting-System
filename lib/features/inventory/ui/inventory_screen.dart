@@ -5,11 +5,12 @@ import '../../../../data/models/product_model.dart';
 import '../logic/inventory_cubit.dart';
 import '../logic/inventory_state.dart';
 import 'add_product_screen.dart';
+import 'edit_product_screen.dart';
 
-import '../../../core/utils/snackbar_utils.dart'; // Add import
+import '../../../core/utils/snackbar_utils.dart';
 
 class InventoryScreen extends StatefulWidget {
-  const InventoryScreen({Key? key}) : super(key: key);
+  const InventoryScreen({super.key});
 
   @override
   State<InventoryScreen> createState() => _InventoryScreenState();
@@ -82,16 +83,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('المخزن')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          // 1. خزن الـ Cubit في متغير قبل الـ await
+          final inventoryCubit = context.read<InventoryCubit>();
+
+          // 2. انتظر عملية التنقل
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddProductScreen()),
-          ).then((_) {
-            // Reload when coming back, just in case
-            if (mounted) {
-              context.read<InventoryCubit>().loadInventory();
-            }
-          });
+          );
+
+          // 3. لما ترجع، استخدم المتغير اللي خزناه مش الـ context
+          if (mounted) {
+            inventoryCubit.loadInventory();
+          }
         },
         child: const Icon(Icons.add),
       ),
@@ -261,22 +266,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                           Icons.edit,
                                           color: Colors.blue,
                                         ),
-                                        onPressed: () {
-                                          Navigator.push(
+                                        onPressed: () async {
+                                          // خزن الـ Cubit قبل الـ Navigation
+                                          final inventoryCubit = context
+                                              .read<InventoryCubit>();
+
+                                          await Navigator.push(
                                             context,
                                             MaterialPageRoute(
                                               builder: (context) =>
-                                                  AddProductScreen(
-                                                    productToEdit: product,
+                                                  EditProductScreen(
+                                                    product: product,
                                                   ),
                                             ),
-                                          ).then((_) {
-                                            if (mounted) {
-                                              context
-                                                  .read<InventoryCubit>()
-                                                  .loadInventory();
-                                            }
-                                          });
+                                          );
+
+                                          // لما نرجع، نتأكد إننا لسه mounted ونعمل تحديث خفيف
+                                          if (mounted) {
+                                            inventoryCubit.loadInventory();
+                                          }
                                         },
                                       ),
                                       IconButton(
