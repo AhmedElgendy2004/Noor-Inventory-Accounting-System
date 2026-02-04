@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/inline_barcode_scanner.dart';
+import '../../../../data/models/category_model.dart';
 import 'custom_text_field.dart';
 import 'form_sections.dart';
 
@@ -19,6 +20,12 @@ class ProductFormContent extends StatelessWidget {
   final VoidCallback onSave;
   final String saveButtonText;
 
+  // التصنيفات
+  final List<CategoryModel> categories;
+  final String? selectedCategoryId;
+  final ValueChanged<String?> onCategoryChanged;
+  final VoidCallback onAddCategory;
+
   const ProductFormContent({
     Key? key,
     required this.formKey,
@@ -29,6 +36,10 @@ class ProductFormContent extends StatelessWidget {
     required this.onPickDate,
     required this.onSave,
     required this.saveButtonText,
+    this.categories = const [],
+    this.selectedCategoryId,
+    required this.onCategoryChanged,
+    required this.onAddCategory,
   }) : super(key: key);
 
   @override
@@ -72,6 +83,46 @@ class ProductFormContent extends StatelessWidget {
             CustomTextField(
               controller: controllers['brand']!,
               label: 'الشركة المصنعة',
+            ),
+
+            // خانة التصنيف مع زر الإضافة
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: selectedCategoryId,
+                      decoration: const InputDecoration(
+                        labelText: 'التصنيف',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.category),
+                      ),
+                      items: categories.map((cat) {
+                        return DropdownMenuItem(
+                          value: cat.id,
+                          child: Text(cat.name),
+                        );
+                      }).toList(),
+                      onChanged: onCategoryChanged,
+                      validator: (value) =>
+                          value == null ? 'يرجى اختيار تصنيف' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      onPressed: onAddCategory,
+                      tooltip: 'إضافة تصنيف جديد',
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             // 2. قسم الأسعار

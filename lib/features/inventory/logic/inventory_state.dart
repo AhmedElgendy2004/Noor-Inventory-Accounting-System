@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../../data/models/product_model.dart';
+import '../../../data/models/category_model.dart';
 
 abstract class InventoryState extends Equatable {
   const InventoryState();
@@ -14,29 +15,38 @@ class InventoryLoading extends InventoryState {}
 
 class InventoryLoaded extends InventoryState {
   final List<ProductModel> products;
+  final List<CategoryModel> categories;
   final bool hasReachedMax;
   final int totalProductCount;
 
   const InventoryLoaded(
     this.products, {
+    this.categories = const [],
     this.hasReachedMax = false,
     this.totalProductCount = 0,
   });
 
   InventoryLoaded copyWith({
     List<ProductModel>? products,
+    List<CategoryModel>? categories,
     bool? hasReachedMax,
     int? totalProductCount,
   }) {
     return InventoryLoaded(
       products ?? this.products,
+      categories: categories ?? this.categories,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       totalProductCount: totalProductCount ?? this.totalProductCount,
     );
   }
 
   @override
-  List<Object?> get props => [products, hasReachedMax, totalProductCount];
+  List<Object?> get props => [
+    products,
+    categories,
+    hasReachedMax,
+    totalProductCount,
+  ];
 }
 
 class InventorySuccess extends InventoryState {

@@ -1,3 +1,4 @@
+import 'package:al_noor_gallery/data/models/category_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -39,10 +40,13 @@ class _EditProductScreenState extends State<EditProductScreen> {
   late final Map<String, TextEditingController> _controllers;
   bool _isScanning = false;
   DateTime? _selectedExpiryDate;
+  String? _selectedCategoryId;
 
   @override
   void initState() {
     super.initState();
+    // تحميل التصنيفات للتأكد من وجودها
+    context.read<InventoryCubit>().loadCategories();
     _initControllers();
   }
 
@@ -50,6 +54,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
   void _initControllers() {
     final p = widget.product;
     _selectedExpiryDate = p.expiryDate;
+    _selectedCategoryId = p.categoryId;
 
     _controllers = {
       'name': TextEditingController(text: p.name),
@@ -177,6 +182,52 @@ class _EditProductScreenState extends State<EditProductScreen> {
     );
   }
 
+  // عرض نافذة إضافة تصنيف
+  void _showAddCategoryDialog(BuildContext context) {
+    final TextEditingController _categoryController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('إضافة تصنيف جديد'),
+        content: TextField(
+          controller: _categoryController,
+          decoration: const InputDecoration(
+            labelText: 'اسم التصنيف',
+            hintText: 'مثال: إلكترونيات',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = _categoryController.text.trim();
+              if (name.isNotEmpty) {
+                context
+                    .read<InventoryCubit>()
+                    .addNewCategory(name)
+                    .then((_) {
+                      Navigator.pop(context);
+                      SnackBarUtils.showSuccess(
+                        context,
+                        'تمت إضافة التصنيف بنجاح',
+                      );
+                    })
+                    .catchError((e) {
+                      Navigator.pop(context);
+                      SnackBarUtils.showError(context, 'فشل الإضافة: $e');
+                    });
+              }
+            },
+            child: const Text('إضافة'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // دالة الحفظ الخاصة بالتعديل
   void _handleUpdate(BuildContext context) {
     if (_formKey.currentState!.validate()) {
@@ -187,6 +238,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
         lastPurchaseDate:
             widget.product.lastPurchaseDate, // الحفاظ على تاريخ الشراء
         unit: widget.product.unit, // الحفاظ على الوحدة
+        categoryId: _selectedCategoryId,
         // البيانات المعدلة
         name: _controllers['name']!.text,
         barcode: _controllers['barcode']!.text,
@@ -232,11 +284,25 @@ class _EditProductScreenState extends State<EditProductScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
+          // استخدام الـ Widget المشتركة
+          List<CategoryModel> categories = [];
+          if (state is InventoryLoaded) {
+            categories = state.categories;
+          }
+
           return ProductFormContent(
             formKey: _formKey,
             controllers: _controllers,
             isScanning: _isScanning,
             saveButtonText: 'حفظ التعديلات',
+            categories: categories,
+            selectedCategoryId: _selectedCategoryId,
+            onCategoryChanged: (val) {
+              setState(() {
+                _selectedCategoryId = val;
+              });
+            },
+            onAddCategory: () => _showAddCategoryDialog(context),
             onToggleScanner: () => setState(() => _isScanning = !_isScanning),
             onBarcodeDetected: (code) {
               setState(() {

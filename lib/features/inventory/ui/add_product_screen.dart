@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../data/models/product_model.dart';
+import '../../../data/models/category_model.dart'; // import category model
 import '../logic/inventory_cubit.dart';
 import '../logic/inventory_state.dart';
 import 'widget/product_form_content.dart';
@@ -35,10 +36,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
   ];
 
   late final Map<String, TextEditingController> _controllers;
+  String? _selectedCategoryId;
 
   @override
   void initState() {
     super.initState();
+    // تحميل التصنيفات عند فتح الشاشة
+    context.read<InventoryCubit>().loadCategories();
+
     _controllers = {
       'name': TextEditingController(),
       'barcode': TextEditingController(),
@@ -170,13 +175,61 @@ class _AddProductScreenState extends State<AddProductScreen> {
     setState(() {
       _selectedExpiryDate = null;
       _isScanning = false;
+      _selectedCategoryId = null; // إعادة تعيين التصنيف
     });
+  }
+
+  // عرض نافذة إضافة تصنيف
+  void _showAddCategoryDialog(BuildContext context) {
+    final TextEditingController _categoryController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('إضافة تصنيف جديد'),
+        content: TextField(
+          controller: _categoryController,
+          decoration: const InputDecoration(
+            labelText: 'اسم التصنيف',
+            hintText: 'مثال: إلكترونيات',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = _categoryController.text.trim();
+              if (name.isNotEmpty) {
+                context
+                    .read<InventoryCubit>()
+                    .addNewCategory(name)
+                    .then((_) {
+                      Navigator.pop(context);
+                      SnackBarUtils.showSuccess(
+                        context,
+                        'تمت إضافة التصنيف بنجاح',
+                      );
+                    })
+                    .catchError((e) {
+                      Navigator.pop(context);
+                      SnackBarUtils.showError(context, 'فشل الإضافة: $e');
+                    });
+              }
+            },
+            child: const Text('إضافة'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleAdd(BuildContext context) {
     if (_formKey.currentState!.validate()) {
       final product = ProductModel(
         name: _controllers['name']!.text,
+        categoryId: _selectedCategoryId,
         barcode: _controllers['barcode']!.text,
         brandCompany: _controllers['brand']!.text.isEmpty
             ? null
@@ -215,11 +268,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
+          // استخدام الـ Widget المشتركة
+          List<CategoryModel> categories = [];
+          if (state is InventoryLoaded) {
+            categories = state.categories;
+          }
+
           return ProductFormContent(
             formKey: _formKey,
             controllers: _controllers,
             isScanning: _isScanning,
             saveButtonText: 'حفظ المنتج',
+            categories: categories,
+            selectedCategoryId: _selectedCategoryId,
+            onCategoryChanged: (val) {
+              setState(() {
+                _selectedCategoryId = val;
+              });
+            },
+            onAddCategory: () => _showAddCategoryDialog(context),
             onToggleScanner: () => setState(() => _isScanning = !_isScanning),
             onBarcodeDetected: (code) {
               setState(() {

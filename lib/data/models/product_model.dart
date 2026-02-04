@@ -13,6 +13,8 @@ class ProductModel {
   final int? expiryAlertDays;
   final DateTime? lastPurchaseDate;
   final String? supplierId;
+  final String? categoryId;
+  final String? categoryName; // للعرض فقط
 
   ProductModel({
     this.id,
@@ -29,6 +31,8 @@ class ProductModel {
     this.expiryAlertDays,
     this.lastPurchaseDate,
     this.supplierId,
+    this.categoryId,
+    this.categoryName,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -51,6 +55,11 @@ class ProductModel {
           ? DateTime.tryParse(json['last_purchase_date'] as String)
           : null,
       supplierId: json['supplier_id'] as String?,
+      categoryId: json['category_id'] as String?,
+      // نفترض أن Supabase يرجع join بهذا الشكل إذا تم طلبه
+      categoryName: json['categories'] != null
+          ? json['categories']['name']
+          : null,
     );
   }
 
@@ -69,6 +78,7 @@ class ProductModel {
       'expiry_alert_days': expiryAlertDays,
       'last_purchase_date': lastPurchaseDate?.toIso8601String(),
       'supplier_id': supplierId,
+      'category_id': categoryId,
     };
     if (id != null) {
       data['id'] = id;

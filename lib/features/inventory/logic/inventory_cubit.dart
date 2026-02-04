@@ -1,28 +1,88 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/models/product_model.dart';
+import '../../../data/models/category_model.dart';
 import '../../../data/services/product_service.dart';
 import 'inventory_state.dart';
 
 class InventoryCubit extends Cubit<InventoryState> {
   final ProductService _productService;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   InventoryCubit(this._productService) : super(InventoryInitial());
 
   static const int _pageSize = 20;
 
+  List<CategoryModel> _cachedCategories = [];
+
+  Future<void> loadCategories() async {
+    try {
+      final response = await _supabase
+          .from('categories')
+          .select()
+          .order('name', ascending: true);
+
+      final data = response as List<dynamic>;
+      _cachedCategories = data.map((e) => CategoryModel.fromJson(e)).toList();
+
+      // تجحديث الحالة الحالية إذا كانت Loaded بإضافة التصنيفات
+      if (state is InventoryLoaded) {
+        emit(
+          (state as InventoryLoaded).copyWith(categories: _cachedCategories),
+        );
+      }
+    } catch (e) {
+      // يمكن تجاهل الخطأ هنا أو طباعته، حيث أن فشل تحميل التصنيفات لا يوقف استخدام التطبيق
+      print('Error loading categories: $e');
+    }
+  }
+
+  Future<void> addNewCategory(String name) async {
+    try {
+      final response = await _supabase
+          .from('categories')
+          .insert({'name': name})
+          .select()
+          .single();
+
+      final newCategory = CategoryModel.fromJson(response);
+      _cachedCategories.add(newCategory);
+
+      // تحديث الواجهة فوراً
+      if (state is InventoryLoaded) {
+        final currentCategories = List<CategoryModel>.from(
+          (state as InventoryLoaded).categories,
+        );
+        // تأكد من عدم التكرار إذا تم إعادة الجلب
+        if (!currentCategories.any((element) => element.id == newCategory.id)) {
+          currentCategories.add(newCategory);
+          currentCategories.sort((a, b) => a.name.compareTo(b.name));
+          emit(
+            (state as InventoryLoaded).copyWith(categories: currentCategories),
+          );
+        }
+      } else {
+        // إذا لم تكن الحالة Loaded (نادر الحدوث عند الإضافة)
+        emit(InventoryLoaded([], categories: _cachedCategories));
+      }
+    } catch (e) {
+      print('Error adding category: $e');
+      throw e; // رمي الخطأ لتمكين الواجهة من إظهار رسالة
+    }
+  }
+
   Future<void> loadInventory({String? query, bool loadMore = false}) async {
+    // تحميل التصنيفات في البداية إذا لم تكن موجودة
+    if (_cachedCategories.isEmpty) {
+      await loadCategories();
+    }
+
     if (loadMore) {
       if (state is InventoryLoaded) {
         final currentState = state as InventoryLoaded;
         if (currentState.hasReachedMax) return;
 
         try {
-          // Pagination Logic for Load More
-          // Don't emit Loading here to avoid rebuilding the whole list,
-          // we rely on the list view showing a spinner at bottom.
-          // Or we can emit the same state but maybe with a 'loadingMore' flag if needed.
-          // For now, we just fetch and emit the new list.
-
           final offset = currentState.products.length;
           final newProducts = await _productService.getProducts(
             limit: _pageSize,
@@ -32,12 +92,13 @@ class InventoryCubit extends Cubit<InventoryState> {
           emit(
             currentState.copyWith(
               products: List.of(currentState.products)..addAll(newProducts),
+              // الحفاظ على التصنيفات عند التحميل الإضافي
+              categories: _cachedCategories,
               hasReachedMax: newProducts.length < _pageSize,
             ),
           );
         } catch (e) {
-          // Optional: emit error or snackbar, but maybe don't replace the whole list with error screen
-          // For simplicity, we keep current state or could emit a dedicated minor error event
+          // ignore error
         }
       }
       return;
@@ -47,20 +108,16 @@ class InventoryCubit extends Cubit<InventoryState> {
     emit(InventoryLoading());
     try {
       if (query != null && query.isNotEmpty) {
-        // Search Mode: Ignore pagination, fetch all relevant
         final products = await _productService.getProducts(searchQuery: query);
         emit(
           InventoryLoaded(
             products,
-            hasReachedMax:
-                true, // No more to load for search results in this simplistic approach
-            totalProductCount:
-                products.length, // Or 0 if we only want total DB count
+            categories: _cachedCategories,
+            hasReachedMax: true,
+            totalProductCount: products.length,
           ),
         );
       } else {
-        // Normal Mode: Fetch first page + Total Count
-        // Run in parallel for performance
         final results = await Future.wait([
           _productService.getProducts(limit: _pageSize, offset: 0),
           _productService.getTotalProductsCount(),
@@ -72,6 +129,7 @@ class InventoryCubit extends Cubit<InventoryState> {
         emit(
           InventoryLoaded(
             products,
+            categories: _cachedCategories,
             hasReachedMax: products.length < _pageSize,
             totalProductCount: totalCount,
           ),
