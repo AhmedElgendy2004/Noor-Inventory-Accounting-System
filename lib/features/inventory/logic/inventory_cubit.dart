@@ -24,7 +24,7 @@ class InventoryCubit extends Cubit<InventoryState> {
       emit(
         InventoryLoaded(
           const [], // لا نحتاج منتجات في شبكة التصنيفات
-          categories: _cachedCategories,
+          categories: List.of(_cachedCategories),
           totalProductCount: totalCount,
           isProductView: false,
         ),
@@ -46,7 +46,9 @@ class InventoryCubit extends Cubit<InventoryState> {
 
       if (state is InventoryLoaded) {
         emit(
-          (state as InventoryLoaded).copyWith(categories: _cachedCategories),
+          (state as InventoryLoaded).copyWith(
+            categories: List.of(_cachedCategories),
+          ),
         );
       }
     } catch (e) {
@@ -120,7 +122,7 @@ class InventoryCubit extends Cubit<InventoryState> {
       emit(
         InventoryLoaded(
           products,
-          categories: _cachedCategories,
+          categories: List.of(_cachedCategories),
           hasReachedMax: products.length < _pageSize,
           totalProductCount: totalCount,
           selectedCategoryId: categoryId,
@@ -149,33 +151,58 @@ class InventoryCubit extends Cubit<InventoryState> {
     }
   }
 
-  Future<void> addNewCategory(String name) async {
+  Future<void> addNewCategory(String name, int color) async {
     try {
       final response = await _supabase
           .from('categories')
-          .insert({'name': name})
+          .insert({'name': name, 'color': color})
           .select()
           .single();
 
       final newCategory = CategoryModel.fromJson(response);
       _cachedCategories.add(newCategory);
+      // Sort
+      _cachedCategories.sort((a, b) => a.name.compareTo(b.name));
 
       if (state is InventoryLoaded) {
-        final currentCategories = List<CategoryModel>.from(
-          (state as InventoryLoaded).categories,
+        emit(
+          (state as InventoryLoaded).copyWith(
+            categories: List.of(_cachedCategories),
+          ),
         );
-        if (!currentCategories.any((element) => element.id == newCategory.id)) {
-          currentCategories.add(newCategory);
-          currentCategories.sort((a, b) => a.name.compareTo(b.name));
-          emit(
-            (state as InventoryLoaded).copyWith(categories: currentCategories),
-          );
-        }
       } else {
-        emit(InventoryLoaded([], categories: _cachedCategories));
+        emit(InventoryLoaded([], categories: List.of(_cachedCategories)));
       }
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<void> deleteCategory(String categoryId) async {
+    try {
+      // 1. فك ارتباط المنتجات بهذا التصنيف (جعل category_id = null)
+      await _supabase
+          .from('products')
+          .update({'category_id': null})
+          .eq('category_id', categoryId);
+
+      // 2. حذف التصنيف
+      await _supabase.from('categories').delete().eq('id', categoryId);
+
+      // 3. تحديث القائمة المحلية
+      _cachedCategories.removeWhere((c) => c.id == categoryId);
+
+      if (state is InventoryLoaded) {
+        emit(
+          (state as InventoryLoaded).copyWith(
+            categories: List.of(_cachedCategories),
+          ),
+        );
+      }
+    } catch (e) {
+      emit(InventoryError('فشل حذف التصنيف: $e'));
+      // إعادة تحميل البيانات لضمان التزامن
+      loadInitialData();
     }
   }
 
@@ -188,7 +215,7 @@ class InventoryCubit extends Cubit<InventoryState> {
       emit(
         InventoryLoaded(
           const [],
-          categories: _cachedCategories,
+          categories: List.of(_cachedCategories),
           isProductView: false, // العودة للشبكة
         ),
       );

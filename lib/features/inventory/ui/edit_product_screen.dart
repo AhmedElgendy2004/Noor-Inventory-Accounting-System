@@ -254,46 +254,119 @@ class _EditProductScreenState extends State<EditProductScreen> {
   // عرض نافذة إضافة تصنيف
   void _showAddCategoryDialog(BuildContext context) {
     final TextEditingController _categoryController = TextEditingController();
+
+    final List<Color> categoryColors = [
+      Colors.blue.shade100,
+      Colors.green.shade100,
+      Colors.orange.shade100,
+      Colors.purple.shade100,
+      Colors.red.shade100,
+      Colors.teal.shade100,
+      Colors.amber.shade100,
+      Colors.pink.shade100,
+      Colors.indigo.shade100,
+      Colors.brown.shade100,
+    ];
+    Color selectedColor = categoryColors[0];
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('إضافة تصنيف جديد'),
-        content: TextField(
-          controller: _categoryController,
-          decoration: const InputDecoration(
-            labelText: 'اسم التصنيف',
-            hintText: 'مثال: مستحضرات تجميل',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = _categoryController.text.trim();
-              if (name.isNotEmpty) {
-                context
-                    .read<InventoryCubit>()
-                    .addNewCategory(name)
-                    .then((_) {
-                      Navigator.pop(context);
-                      SnackBarUtils.showSuccess(
-                        context,
-                        'تمت إضافة التصنيف بنجاح',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('إضافة تصنيف جديد'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _categoryController,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم التصنيف',
+                      hintText: 'مثال: مستحضرات تجميل',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'اختر لون التصنيف:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: categoryColors.map((color) {
+                      final isSelected = selectedColor.value == color.value;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedColor = color;
+                          });
+                        },
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(color: Colors.blueAccent, width: 3)
+                                : Border.all(color: Colors.grey.shade300),
+                            boxShadow: [
+                              if (isSelected)
+                                BoxShadow(
+                                  color: color.withOpacity(0.4),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                            ],
+                          ),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Colors.blueAccent,
+                                )
+                              : null,
+                        ),
                       );
-                    })
-                    .catchError((e) {
-                      Navigator.pop(context);
-                      // SnackBarUtils.showError(context, 'فشل الإضافة: $e');
-                      SnackBarUtils.showError(context, 'فشل الإضافة');
-                    });
-              }
-            },
-            child: const Text('إضافة'),
-          ),
-        ],
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final name = _categoryController.text.trim();
+                  if (name.isNotEmpty) {
+                    context
+                        .read<InventoryCubit>()
+                        .addNewCategory(name, selectedColor.value)
+                        .then((_) {
+                          Navigator.pop(context);
+                          SnackBarUtils.showSuccess(
+                            context,
+                            'تمت إضافة التصنيف بنجاح',
+                          );
+                        })
+                        .catchError((e) {
+                          Navigator.pop(context);
+                          // SnackBarUtils.showError(context, 'فشل الإضافة: $e');
+                          SnackBarUtils.showError(context, 'فشل الإضافة');
+                        });
+                  }
+                },
+                child: const Text('إضافة'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

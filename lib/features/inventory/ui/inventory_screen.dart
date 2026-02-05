@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/utils/inline_barcode_scanner.dart';
 import '../../../../data/models/product_model.dart';
+import '../../../../data/models/category_model.dart';
 import '../logic/inventory_cubit.dart';
 import '../logic/inventory_state.dart';
 import 'add_product_screen.dart';
@@ -94,43 +95,131 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   void _showAddCategoryDialog(BuildContext context) {
     final TextEditingController categoryController = TextEditingController();
+    Color selectedColor = _categoryColors[0];
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('إضافة تصنيف جديد'),
-        content: TextField(
-          controller: categoryController,
-          decoration: const InputDecoration(
-            labelText: 'اسم التصنيف',
-            hintText: 'مثال: إلكترونيات',
-          ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('إضافة تصنيف جديد'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: categoryController,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم التصنيف',
+                      hintText: 'مثال: إلكترونيات',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'اختر لون التصنيف:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: _categoryColors.map((color) {
+                      final isSelected = selectedColor.value == color.value;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedColor = color;
+                          });
+                        },
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(color: Colors.blueAccent, width: 3)
+                                : Border.all(color: Colors.grey.shade300),
+                            boxShadow: [
+                              if (isSelected)
+                                BoxShadow(
+                                  color: color.withOpacity(0.4),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                            ],
+                          ),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Colors.blueAccent,
+                                )
+                              : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final name = categoryController.text.trim();
+                  if (name.isNotEmpty) {
+                    context
+                        .read<InventoryCubit>()
+                        .addNewCategory(name, selectedColor.value)
+                        .then((_) {
+                          Navigator.pop(context);
+                          SnackBarUtils.showSuccess(
+                            context,
+                            'تمت إضافة التصنيف بنجاح',
+                          );
+                        })
+                        .catchError((e) {
+                          Navigator.pop(context);
+                          SnackBarUtils.showError(context, 'فشل الإضافة: $e');
+                        });
+                  }
+                },
+                child: const Text('إضافة'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _deleteCategory(CategoryModel category) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف التصنيف'),
+        content: Text(
+          'هل أنت متأكد من حذف تصنيف "${category.name}"؟\n\nملاحظه : المنتجات التابعة له لن يتم حذفها , ولكن ستصبح "بدون تصنيف".',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('إلغاء'),
           ),
-          ElevatedButton(
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
             onPressed: () {
-              final name = categoryController.text.trim();
-              if (name.isNotEmpty) {
-                context
-                    .read<InventoryCubit>()
-                    .addNewCategory(name)
-                    .then((_) {
-                      Navigator.pop(context);
-                      SnackBarUtils.showSuccess(
-                        context,
-                        'تمت إضافة التصنيف بنجاح',
-                      );
-                    })
-                    .catchError((e) {
-                      Navigator.pop(context);
-                      SnackBarUtils.showError(context, 'فشل الإضافة: $e');
-                    });
+              Navigator.pop(ctx);
+              if (category.id != null) {
+                context.read<InventoryCubit>().deleteCategory(category.id!);
               }
             },
-            child: const Text('إضافة'),
+            child: const Text('حذف'),
           ),
         ],
       ),
@@ -408,7 +497,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
               itemCount: state.categories.length,
               itemBuilder: (context, index) {
                 final category = state.categories[index];
-                final color = _categoryColors[index % _categoryColors.length];
+                final color = category.color != null
+                    ? Color(category.color!)
+                    : _categoryColors[index % _categoryColors.length];
 
                 return InkWell(
                   onTap: () {
@@ -417,6 +508,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       categoryId: category.id,
                     );
                   },
+                  onLongPress: () => _deleteCategory(category),
                   child: Container(
                     decoration: BoxDecoration(
                       color: color,
