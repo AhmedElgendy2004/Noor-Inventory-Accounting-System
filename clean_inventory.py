@@ -1,5 +1,6 @@
-import 'package:al_noor_gallery/core/constants/constants.dart';
-import 'package:flutter/material.dart';
+import os
+
+content = r'''import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../data/models/category_model.dart';
@@ -15,9 +16,20 @@ class InventoryScreen extends StatefulWidget {
 }
 
 class _InventoryScreenState extends State<InventoryScreen> {
-  // لا نحتاج للبحث هنا إذا كان في شاشة المنتجات، لكن المستخدم قد يرغب بالبحث العام
-  // سنقوم، عند البحث، بالانتقال لشاشة "كل المنتجات" مع تمرير نص البحث
   final TextEditingController _searchController = TextEditingController();
+  
+  final List<Color> _categoryColors = [
+    Colors.blue.shade100,
+    Colors.green.shade100,
+    Colors.orange.shade100,
+    Colors.purple.shade100,
+    Colors.red.shade100,
+    Colors.teal.shade100,
+    Colors.amber.shade100,
+    Colors.pink.shade100,
+    Colors.indigo.shade100,
+    Colors.brown.shade100,
+  ];
 
   @override
   void initState() {
@@ -38,9 +50,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('حذف التصنيف'),
-        content: Text(
-          'هل أنت متأكد من حذف تصنيف "${category.name}"؟\nسيؤدي هذا لحذف جميع المنتجات بداخله!',
-        ),
+        content: Text('هل أنت متأكد من حذف تصنيف "${category.name}"?\nسيؤدي هذا لحذف جميع المنتجات بداخله!'),
         actions: [
           TextButton(
             onPressed: () => context.pop(false),
@@ -55,14 +65,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ),
     );
 
-    if (confirm == true && mounted && category.id != null) {
-      context.read<InventoryCubit>().deleteCategory(category.id!);
+    if (confirm == true && mounted) {
+      context.read<InventoryCubit>().deleteCategory(category.id);
     }
   }
 
   void _showAddCategoryDialog(BuildContext context) {
     final TextEditingController _categoryController = TextEditingController();
-    Color selectedColor = KlistCategoryColors[0];
+    Color selectedColor = _categoryColors[0];
 
     showDialog(
       context: context,
@@ -92,7 +102,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     spacing: 12,
                     runSpacing: 12,
                     alignment: WrapAlignment.center,
-                    children: KlistCategoryColors.map((color) {
+                    children: _categoryColors.map((color) {
                       final isSelected = selectedColor.value == color.value;
                       return GestureDetector(
                         onTap: () {
@@ -112,7 +122,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             boxShadow: [
                               if (isSelected)
                                 BoxShadow(
-                                  color: color,
+                                  color: color.withOpacity(0.4),
                                   blurRadius: 8,
                                   spreadRadius: 2,
                                 ),
@@ -168,8 +178,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('المخزن')),
-      // زر الإضافة العائم يذهب لشاشة إضافة منتج مباشرةً
+      appBar: AppBar(
+        title: const Text('المخزن'),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           context.push('/add-product');
@@ -179,7 +190,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // شريط البحث العام (عند كتابة أي شيء والضغط يمكن الذهاب لمنتجات عامة)
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextField(
@@ -191,9 +201,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
                 onSubmitted: (value) {
                   if (value.isNotEmpty) {
-                    // الانتقال لشاشة المنتجات (الكل) مع تصفية لاحقة (يمكنك تحسين ذلك بتمرير queryParams)
-                    // هنا سننتقل لشاشة categoryId='all' ثم هناك نقوم بالبحث
-                    // لكن ال Cubit مشترك، لذا يمكننا عمل التالي:
                     context.read<InventoryCubit>().fetchProducts(query: value);
                     context.push('/products/all');
                     _searchController.clear();
@@ -201,13 +208,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 },
               ),
             ),
-
+            
             Expanded(
               child: BlocConsumer<InventoryCubit, InventoryState>(
                 listener: (context, state) {
-                  if (state is InventoryError) {
+                   if (state is InventoryError) {
                     SnackBarUtils.showError(context, state.message);
-                  }
+                   }
                 },
                 builder: (context, state) {
                   if (state is InventoryLoading) {
@@ -219,7 +226,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   return const SizedBox();
                 },
               ),
-            ),
+            )
           ],
         ),
       ),
@@ -236,7 +243,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
           children: [
-            // زر "كل المنتجات"
             Container(
               width: double.infinity,
               margin: const EdgeInsets.only(bottom: 16),
@@ -248,7 +254,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
               child: InkWell(
                 onTap: () {
-                  context.push('/products/all');
+                   context.push('/products/all');
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: const Center(
@@ -264,7 +270,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
             ),
 
-            // شبكة التصنيفات
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -279,11 +284,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 final category = state.categories[index];
                 final color = category.color != null
                     ? Color(category.color!)
-                    : KlistCategoryColors[index % KlistCategoryColors.length];
+                    : _categoryColors[index % _categoryColors.length];
 
                 return InkWell(
                   onTap: () {
-                    // الانتقال لشاشة المنتجات الخاصة بهذا التصنيف
                     context.push('/products/${category.id}');
                   },
                   onLongPress: () => _deleteCategory(category),
@@ -311,7 +315,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
               },
             ),
 
-            // زر إضافة تصنيف جديد
             Padding(
               padding: const EdgeInsets.only(top: 16.0),
               child: SizedBox(
@@ -335,10 +338,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
             ),
 
-            const SizedBox(height: 80),
+            const SizedBox(height: 80), 
           ],
         ),
       ),
     );
   }
 }
+'''
+
+path = 'lib/features/inventory/ui/inventory_screen.dart'
+try:
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    print("DONE")
+except Exception as e:
+    print(e)

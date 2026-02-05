@@ -5,7 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'data/services/product_service.dart';
 import 'features/inventory/logic/inventory_cubit.dart';
-import 'features/inventory/ui/inventory_screen.dart';
+import 'core/routes/app_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,14 +32,14 @@ class MyApp extends StatelessWidget {
           create: (context) => InventoryCubit(ProductService()),
         ),
       ],
-      child: MaterialApp(
+      child: MaterialApp.router(
+        routerConfig: AppRouter.router,
         debugShowCheckedModeBanner: false,
         title: 'Al Noor Gallery POS',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
         ),
-        home: const InventoryScreen(),
         // Support RTL for Arabic
         builder: (context, child) {
           return Directionality(

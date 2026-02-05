@@ -2,6 +2,7 @@ import 'package:al_noor_gallery/data/models/category_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../data/models/product_model.dart';
 import '../logic/inventory_cubit.dart';
@@ -159,7 +160,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => context.pop(),
                       child: const Text(
                         'إلغاء',
                         style: TextStyle(color: Colors.red),
@@ -172,7 +173,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
                     TextButton(
                       onPressed: () {
                         onConfirm(DateTime(selectedYear, selectedMonth));
-                        Navigator.pop(context);
+                        context.pop();
                       },
                       child: const Text('تم'),
                     ),
@@ -338,7 +339,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => context.pop(),
                 child: const Text('إلغاء'),
               ),
               ElevatedButton(
@@ -349,16 +350,14 @@ class _EditProductScreenState extends State<EditProductScreen> {
                         .read<InventoryCubit>()
                         .addNewCategory(name, selectedColor.value)
                         .then((_) {
-                          Navigator.pop(context);
+                          context.pop();
                           SnackBarUtils.showSuccess(
                             context,
                             'تمت إضافة التصنيف بنجاح',
                           );
                         })
                         .catchError((e) {
-                          Navigator.pop(context);
-                          // SnackBarUtils.showError(context, 'فشل الإضافة: $e');
-                          SnackBarUtils.showError(context, 'فشل الإضافة');
+                          context.pop();
                         });
                   }
                 },
@@ -408,7 +407,15 @@ class _EditProductScreenState extends State<EditProductScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تعديل المنتج')),
+      appBar: AppBar(
+        title: const Text('تعديل المنتج'),
+        leading: IconButton(
+          onPressed: () {
+            context.pop();
+          },
+          icon: Icon(Icons.arrow_back),
+        ),
+      ),
       body: SafeArea(
         child: BlocConsumer<InventoryCubit, InventoryState>(
           listener: (context, state) {
@@ -417,7 +424,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
 
               // إغلاق الشاشة فوراً عند النجاح كما طلبت
               if (mounted) {
-                Navigator.pop(context);
+                context.pop();
               }
             } else if (state is InventoryError) {
               // SnackBarUtils.showError(context, state.message);

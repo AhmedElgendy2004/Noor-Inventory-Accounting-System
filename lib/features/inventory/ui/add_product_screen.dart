@@ -2,6 +2,7 @@ import 'package:al_noor_gallery/core/constants/constants.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/models/category_model.dart';
@@ -142,7 +143,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => context.pop(),
                       child: const Text(
                         'إلغاء',
                         style: TextStyle(color: Colors.red),
@@ -155,7 +156,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     TextButton(
                       onPressed: () {
                         onConfirm(DateTime(selectedYear, selectedMonth));
-                        Navigator.pop(context);
+                        context.pop();
                       },
                       child: const Text('تم'),
                     ),
@@ -338,7 +339,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => context.pop(),
                 child: const Text('إلغاء'),
               ),
               ElevatedButton(
@@ -349,14 +350,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         .read<InventoryCubit>()
                         .addNewCategory(name, selectedColor.value)
                         .then((_) {
-                          Navigator.pop(context);
+                          context.pop();
                           SnackBarUtils.showSuccess(
                             context,
                             'تمت إضافة التصنيف بنجاح',
                           );
                         })
                         .catchError((e) {
-                          Navigator.pop(context);
+                          context.pop();
                           SnackBarUtils.showError(context, 'فشل الإضافة');
                         });
                   }
