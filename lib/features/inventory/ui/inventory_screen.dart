@@ -61,7 +61,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   void _showAddCategoryDialog(BuildContext context) {
-    final TextEditingController _categoryController = TextEditingController();
+    final TextEditingController categoryController = TextEditingController();
     Color selectedColor = KlistCategoryColors[0];
 
     showDialog(
@@ -76,7 +76,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
-                    controller: _categoryController,
+                    controller: categoryController,
                     decoration: const InputDecoration(
                       labelText: 'اسم التصنيف',
                       hintText: 'مثال: مستحضرات تجميل',
@@ -93,7 +93,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     runSpacing: 12,
                     alignment: WrapAlignment.center,
                     children: KlistCategoryColors.map((color) {
-                      final isSelected = selectedColor.value == color.value;
+                      final isSelected = selectedColor == color;
                       return GestureDetector(
                         onTap: () {
                           setState(() {
@@ -138,7 +138,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  final name = _categoryController.text.trim();
+                  final name = categoryController.text.trim();
                   if (name.isNotEmpty) {
                     context
                         .read<InventoryCubit>()
@@ -169,13 +169,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('المخزن')),
+
       // زر الإضافة العائم يذهب لشاشة إضافة منتج مباشرةً
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.large(
         onPressed: () {
           context.push('/add-product');
         },
-        child: const Icon(Icons.add),
+        child: const Text(
+          "   اضافه\nمنتج جديد",
+          style: TextStyle(fontWeight: .bold),
+        ),
       ),
+
       body: SafeArea(
         child: Column(
           children: [
@@ -264,6 +269,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
               ),
             ),
 
+            // زر إضافة تصنيف جديد
+            const SizedBox(height: 20),
+
             // شبكة التصنيفات
             GridView.builder(
               shrinkWrap: true,
@@ -310,18 +318,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 );
               },
             ),
-
-            // زر إضافة تصنيف جديد
             Padding(
               padding: const EdgeInsets.only(top: 16.0),
               child: SizedBox(
-                width: double.infinity,
-                height: 55,
+                width: 180,
+                height: 100,
                 child: OutlinedButton.icon(
                   onPressed: () => _showAddCategoryDialog(context),
-                  icon: const Icon(Icons.add_circle_outline, size: 28),
+                  icon: const Icon(Icons.add_circle_outline, size: 30),
                   label: const Text(
-                    'إضافة تصنيف جديد',
+                    ' تصنيف جديد',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -334,8 +340,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
             ),
-
-            const SizedBox(height: 80),
           ],
         ),
       ),

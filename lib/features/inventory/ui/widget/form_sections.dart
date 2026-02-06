@@ -32,7 +32,7 @@ class RowFields extends StatelessWidget {
   final Widget field1;
   final Widget field2;
 
-  const RowFields({Key? key, required this.field1, required this.field2}) : super(key: key);
+  const RowFields({super.key, required this.field1, required this.field2});
 
   @override
   Widget build(BuildContext context) {

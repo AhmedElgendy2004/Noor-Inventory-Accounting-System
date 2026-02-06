@@ -33,7 +33,7 @@ class ProductFormContent extends StatelessWidget {
   final VoidCallback onPickProductionDate;
 
   const ProductFormContent({
-    Key? key,
+    super.key,
     required this.formKey,
     required this.controllers,
     required this.isScanning,
@@ -49,7 +49,7 @@ class ProductFormContent extends StatelessWidget {
     this.isCalculatedExpiryMode = false,
     required this.onExpiryModeChanged,
     required this.onPickProductionDate,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -81,9 +81,9 @@ class ProductFormContent extends StatelessWidget {
               label: 'الباركود',
               icon: Icons.qr_code,
               isRequired: true,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
-              ],
+              // inputFormatters: [
+              //   FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
+              // ],
               suffixIcon: IconButton(
                 icon: Icon(
                   isScanning ? Icons.stop_circle : Icons.qr_code_scanner,
@@ -105,11 +105,11 @@ class ProductFormContent extends StatelessWidget {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: selectedCategoryId,
+                      initialValue: selectedCategoryId,
                       decoration: const InputDecoration(
                         labelText: 'التصنيف',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.category),
+                       // prefixIcon: Icon(Icons.category),
                       ),
                       items: categories.map((cat) {
                         return DropdownMenuItem(
@@ -175,8 +175,9 @@ class ProductFormContent extends StatelessWidget {
                     double.tryParse(controllers['retailPrice']!.text) ?? 0;
                 final wholesale = double.tryParse(val) ?? 0;
 
-                if (wholesale <= purchase)
+                if (wholesale <= purchase) {
                   return 'يجب أن يكون أكبر من سعر الشراء';
+                }
                 if (retail > 0 && wholesale > retail) {
                   return 'يجب أن يكون أقل من (أو يساوي) سعر القطاعي';
                 }
@@ -237,7 +238,7 @@ class ProductFormContent extends StatelessWidget {
 
             CustomTextField(
               controller: controllers['expiryDate']!,
-              label: 'تاريخ الصلاحية',
+              label: 'تاريخ الانتهاء',
               icon: Icons.calendar_today,
               readOnly: true,
               onTap: isCalculatedExpiryMode ? null : onPickDate,
