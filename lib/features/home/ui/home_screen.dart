@@ -88,7 +88,7 @@ class HomeScreen extends StatelessWidget {
 
                 // 4. Purchase Invoices (Placeholder)
                 DashboardCard(
-                  title: 'فواتير الشراء',
+                  title: 'فواتير الشراء \n(قريباً)',
                   icon: Icons.receipt_long,
                   color: Colors.purple,
                   onTap: () {
@@ -102,7 +102,7 @@ class HomeScreen extends StatelessWidget {
 
                 // 5. Accounts (Placeholder)
                 DashboardCard(
-                  title: 'الحسابات',
+                  title: 'الحسابات\n(قريباً)',
                   icon: Icons.calculate,
                   color: Colors.brown,
                   onTap: () {
@@ -113,9 +113,9 @@ class HomeScreen extends StatelessWidget {
                 ),
                 // 6. Purchases (Placeholder)
                 DashboardCard(
-                  title: 'شراء',
+                  title: 'شراء\n(قريباً)',
                   icon: Icons.shopping_cart,
-                  color: Colors.brown,
+                  color: Colors.redAccent,
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('قريباً: إدارة الشراء')),
@@ -125,7 +125,7 @@ class HomeScreen extends StatelessWidget {
 
                 // 7. Customers (Placeholder)
                 DashboardCard(
-                  title: 'العملاء',
+                  title: 'العملاء\n(قريباً)',
                   icon: Icons.people,
                   color: Colors.blueAccent,
                   onTap: () {
@@ -136,7 +136,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 // 8. Suppliers (Placeholder)
                 DashboardCard(
-                  title: 'الموردين',
+                  title: 'الموردين\n(قريباً)',
                   icon: Icons.people_outline,
                   color: Colors.blueGrey,
                   onTap: () {
