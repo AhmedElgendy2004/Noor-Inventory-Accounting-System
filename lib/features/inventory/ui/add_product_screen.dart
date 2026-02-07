@@ -248,6 +248,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   void _handleAdd(BuildContext context) {
     if (_formKey.currentState!.validate()) {
       final product = ProductModel(
+        // تسجيل تاريخ الشراء تلقائياً
+        lastPurchaseDate: DateTime.now(),
+        
         name: _controllers['name']!.text,
         categoryId: _selectedCategoryId,
         barcode: _controllers['barcode']!.text,

@@ -14,6 +14,12 @@ class DatePickerUtils {
     return "${arabicMonths[date.month - 1]} ${date.year}";
   }
 
+  // تنسيق كامل (يوم شهر سنة - وقت)
+  static String formatFullDateTime(DateTime date) {
+    final time = "${date.hour > 12 ? date.hour - 12 : date.hour}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'م' : 'ص'}";
+    return "${date.day} ${arabicMonths[date.month - 1]} ${date.year} | $time";
+  }
+
   // 3. دالة الحساب (حساب تاريخ الانتهاء بناءً على تاريخ الإنتاج والمدة)
   static DateTime calculateExpiryDate({
     required DateTime productionDate,

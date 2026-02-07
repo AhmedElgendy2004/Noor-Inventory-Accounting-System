@@ -64,6 +64,19 @@ class ProductFormContent extends StatelessWidget {
             // 1. قسم البيانات الأساسية
             const SectionTitle('البيانات الأساسية'),
 
+            // عرض تاريخ الشراء (للقراءة فقط) إن وجد
+            if (controllers.containsKey('lastPurchaseDate') &&
+                controllers['lastPurchaseDate']!.text.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: CustomTextField(
+                  controller: controllers['lastPurchaseDate']!,
+                  label: 'آخر تاريخ شراء',
+                  icon: Icons.history, // أيقونة معبرة أكثر
+                  readOnly: true,
+                ),
+              ),
+
             CustomTextField(
               controller: controllers['name']!,
               label: 'اسم المنتج',

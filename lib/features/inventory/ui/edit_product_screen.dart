@@ -78,6 +78,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
             ? DatePickerUtils.formatDateToArabic(p.expiryDate!)
             : '',
       ),
+      'lastPurchaseDate': TextEditingController(
+        text: p.lastPurchaseDate != null
+            ? DatePickerUtils.formatDateToArabic(p.lastPurchaseDate!)
+            : '',
+      ),
       'productionDate': TextEditingController(),
       'validityMonths': TextEditingController(),
     };
@@ -262,8 +267,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
       final updatedProduct = ProductModel(
         id: widget.product.id, // مهم جداً للتحديث
         supplierId: widget.product.supplierId, // الحفاظ على المورد
-        lastPurchaseDate:
-            widget.product.lastPurchaseDate, // الحفاظ على تاريخ الشراء
+        lastPurchaseDate: widget.product.lastPurchaseDate, // الحفاظ على تاريخ الشراء القديم
         unit: widget.product.unit, // الحفاظ على الوحدة
         categoryId: _selectedCategoryId,
         // البيانات المعدلة
