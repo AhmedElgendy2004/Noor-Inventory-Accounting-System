@@ -267,7 +267,8 @@ class _EditProductScreenState extends State<EditProductScreen> {
       final updatedProduct = ProductModel(
         id: widget.product.id, // مهم جداً للتحديث
         supplierId: widget.product.supplierId, // الحفاظ على المورد
-        lastPurchaseDate: widget.product.lastPurchaseDate, // الحفاظ على تاريخ الشراء القديم
+        lastPurchaseDate:
+            widget.product.lastPurchaseDate, // الحفاظ على تاريخ الشراء القديم
         unit: widget.product.unit, // الحفاظ على الوحدة
         categoryId: _selectedCategoryId,
         // البيانات المعدلة

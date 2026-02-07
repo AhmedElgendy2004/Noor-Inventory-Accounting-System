@@ -5,8 +5,18 @@ import 'package:go_router/go_router.dart';
 class DatePickerUtils {
   // 1. قائمة الشهور (ثابتة هنا للاستخدام العام)
   static const List<String> arabicMonths = [
-    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    'يناير',
+    'فبراير',
+    'مارس',
+    'أبريل',
+    'مايو',
+    'يونيو',
+    'يوليو',
+    'أغسطس',
+    'سبتمبر',
+    'أكتوبر',
+    'نوفمبر',
+    'ديسمبر',
   ];
 
   // 2. دالة التنسيق (تحويل التاريخ لنص عربي)
@@ -16,7 +26,8 @@ class DatePickerUtils {
 
   // تنسيق كامل (يوم شهر سنة - وقت)
   static String formatFullDateTime(DateTime date) {
-    final time = "${date.hour > 12 ? date.hour - 12 : date.hour}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'م' : 'ص'}";
+    final time =
+        "${date.hour > 12 ? date.hour - 12 : date.hour}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'م' : 'ص'}";
     return "${date.day} ${arabicMonths[date.month - 1]} ${date.year} | $time";
   }
 
@@ -64,28 +75,42 @@ class DatePickerUtils {
             children: [
               // شريط الأزرار
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
                       onPressed: () => context.pop(),
-                      child: const Text('إلغاء', style: TextStyle(color: Colors.red)),
+                      child: const Text(
+                        'إلغاء',
+                        style: TextStyle(color: Colors.red),
+                      ),
                     ),
                     const Text(
                       'اختر التاريخ',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     TextButton(
                       onPressed: () {
                         onConfirm(DateTime(selectedYear, selectedMonth));
                         context.pop();
                       },
-                      child: const Text('تم', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'تم',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
@@ -97,10 +122,12 @@ class DatePickerUtils {
                     // بكرة الشهور
                     Expanded(
                       child: CupertinoPicker(
-                        scrollController:
-                            FixedExtentScrollController(initialItem: selectedMonth - 1),
+                        scrollController: FixedExtentScrollController(
+                          initialItem: selectedMonth - 1,
+                        ),
                         itemExtent: 40,
-                        onSelectedItemChanged: (index) => selectedMonth = index + 1,
+                        onSelectedItemChanged: (index) =>
+                            selectedMonth = index + 1,
                         children: arabicMonths
                             .map((month) => Center(child: Text(month)))
                             .toList(),
@@ -115,7 +142,8 @@ class DatePickerUtils {
                               : 0,
                         ),
                         itemExtent: 40,
-                        onSelectedItemChanged: (index) => selectedYear = years[index],
+                        onSelectedItemChanged: (index) =>
+                            selectedYear = years[index],
                         children: years
                             .map((year) => Center(child: Text(year.toString())))
                             .toList(),

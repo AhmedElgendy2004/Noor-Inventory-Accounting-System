@@ -26,7 +26,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   // متغيرات الصلاحية
   bool _isCalculatedExpiryMode = false;
   DateTime? _productionDate;
-  
+
   // متغيرات الباركود والتاريخ
   bool _isScanning = false;
   DateTime? _selectedExpiryDate;
@@ -81,7 +81,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       setState(() {
         _selectedExpiryDate = newDate;
         // تنسيق النص باستخدام الـ Utility Class
-        _controllers['expiryDate']!.text = DatePickerUtils.formatDateToArabic(newDate);
+        _controllers['expiryDate']!.text = DatePickerUtils.formatDateToArabic(
+          newDate,
+        );
       });
     }
   }
@@ -98,7 +100,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       onConfirm: (date) {
         setState(() {
           _selectedExpiryDate = date;
-          _controllers['expiryDate']!.text = DatePickerUtils.formatDateToArabic(date);
+          _controllers['expiryDate']!.text = DatePickerUtils.formatDateToArabic(
+            date,
+          );
         });
       },
     );
@@ -116,8 +120,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       onConfirm: (date) {
         setState(() {
           _productionDate = date;
-          _controllers['productionDate']!.text = DatePickerUtils.formatDateToArabic(date);
-          
+          _controllers['productionDate']!.text =
+              DatePickerUtils.formatDateToArabic(date);
+
           // تحديث تاريخ الانتهاء تلقائياً لو فيه شهور مكتوبة
           _calculateExpiryDate();
         });
@@ -200,7 +205,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             ],
                           ),
                           child: isSelected
-                              ? const Icon(Icons.check, color: Colors.blueAccent)
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Colors.blueAccent,
+                                )
                               : null,
                         ),
                       );
@@ -220,9 +228,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   if (name.isNotEmpty) {
                     context
                         .read<InventoryCubit>()
-                        .addNewCategory(name, selectedColor.value) // هنا بنبعت الـ int
+                        .addNewCategory(
+                          name,
+                          selectedColor.value,
+                        ) // هنا بنبعت الـ int
                         .then((_) {
-                          if (!context.mounted) return; // ✅ الحماية من Async Gap
+                          if (!context.mounted)
+                            return; // ✅ الحماية من Async Gap
                           context.pop();
                           SnackBarUtils.showSuccess(
                             context,
@@ -250,7 +262,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final product = ProductModel(
         // تسجيل تاريخ الشراء تلقائياً
         lastPurchaseDate: DateTime.now(),
-        
+
         name: _controllers['name']!.text,
         categoryId: _selectedCategoryId,
         barcode: _controllers['barcode']!.text,
