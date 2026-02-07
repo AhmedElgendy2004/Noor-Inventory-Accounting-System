@@ -1,17 +1,51 @@
 import 'package:go_router/go_router.dart';
+import '../../features/home/ui/home_screen.dart'; // Import Home
+import '../../features/sales/ui/sales_screen.dart'; // Import POS
 import '../../features/inventory/ui/inventory_screen.dart';
 import '../../features/inventory/ui/product_list_screen.dart';
 import '../../features/inventory/ui/add_product_screen.dart';
 import '../../features/inventory/ui/edit_product_screen.dart';
+import '../../features/sales_history/ui/sales_history_screen.dart';
+import '../../features/sales_history/ui/sales_invoice_detail_screen.dart';
 import '../../data/models/product_model.dart';
+import '../../data/models/sales_invoice_model.dart';
 
 class AppRouter {
   static final router = GoRouter(
     initialLocation: '/',
     routes: [
-      // الشاشة الرئيسية (المخزن - التصنيفات)
+      // الشاشة الرئيسية (لوحة التحكم)
       GoRoute(
         path: '/',
+        name: 'home',
+        builder: (context, state) => const HomeScreen(),
+      ),
+
+      // سجل المبيعات
+      GoRoute(
+        path: '/sales-history',
+        builder: (context, state) => const SalesHistoryScreen(),
+        routes: [
+          GoRoute(
+            path: 'details',
+            builder: (context, state) {
+              final invoice = state.extra as SalesInvoiceModel;
+              return SalesInvoiceDetailScreen(invoice: invoice);
+            },
+          ),
+        ],
+      ),
+
+      // نقطة البيع
+      GoRoute(
+        path: '/pos',
+        name: 'pos',
+        builder: (context, state) => const SalesScreen(),
+      ),
+
+      // إدارة المخزن (التصنيفات) - تم تغيير المسار
+      GoRoute(
+        path: '/inventory',
         name: 'inventory',
         builder: (context, state) => const InventoryScreen(),
       ),

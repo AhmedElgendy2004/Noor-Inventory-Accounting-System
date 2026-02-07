@@ -4,7 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'data/services/product_service.dart';
+import 'data/services/sales_service.dart'; // Import SalesService
 import 'features/inventory/logic/inventory_cubit.dart';
+import 'features/sales/logic/sales_cubit.dart'; // Import SalesCubit
 import 'core/routes/app_router.dart';
 
 Future<void> main() async {
@@ -30,6 +32,9 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider<InventoryCubit>(
           create: (context) => InventoryCubit(ProductService()),
+        ),
+        BlocProvider<SalesCubit>(
+          create: (context) => SalesCubit(SalesService()),
         ),
       ],
       child: MaterialApp.router(

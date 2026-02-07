@@ -217,11 +217,19 @@ class InventoryCubit extends Cubit<InventoryState> {
   }
 
   Future<void> updateProduct(ProductModel product) async {
+    // Capture current context before loading/success states
+    String? currentCategoryId;
+    if (state is InventoryLoaded) {
+      currentCategoryId = (state as InventoryLoaded).selectedCategoryId;
+    }
+
     emit(InventoryLoading());
     try {
       await _productService.updateProduct(product);
       emit(const InventorySuccess('تم تحديث المنتج بنجاح'));
-      // يمكن إعادة تحميل القائمة الحالية إذا كنا في وضع العرض
+
+      // Reload the list to show updated data
+      await fetchProducts(categoryId: currentCategoryId);
     } catch (e) {
       emit(InventoryError(e.toString()));
     }

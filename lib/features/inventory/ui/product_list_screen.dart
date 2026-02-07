@@ -340,7 +340,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                     indent: 16, // مسافة فاضية من اليمين
                                     endIndent: 16, // مسافة فاضية من اليسار
                                   ),
-                                //  الكمية
+                                  //  الكمية
                                   Align(
                                     alignment: AlignmentGeometry.bottomLeft,
                                     child: Text(
@@ -397,7 +397,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       },
                     );
                   }
-                  return const SizedBox.shrink();
+                  return const Center(child: CircularProgressIndicator());
                 },
               ),
             ),
