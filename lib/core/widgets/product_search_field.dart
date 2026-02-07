@@ -9,12 +9,12 @@ class ProductSearchField extends StatefulWidget {
   final String hintText;
 
   const ProductSearchField({
-    Key? key,
+    super.key,
     required this.controller,
     required this.onChanged,
     this.onSubmitted,
     this.hintText = 'بحث عن منتج (اسم أو باركود)',
-  }) : super(key: key);
+  });
 
   @override
   State<ProductSearchField> createState() => _ProductSearchFieldState();

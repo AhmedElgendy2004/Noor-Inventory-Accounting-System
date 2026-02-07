@@ -233,8 +233,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           selectedColor.value,
                         ) // هنا بنبعت الـ int
                         .then((_) {
-                          if (!context.mounted)
+                          if (!context.mounted) {
                             return; // ✅ الحماية من Async Gap
+                          }
                           context.pop();
                           SnackBarUtils.showSuccess(
                             context,

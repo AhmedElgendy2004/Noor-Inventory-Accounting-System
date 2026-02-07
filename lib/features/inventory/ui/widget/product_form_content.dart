@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../../../core/utils/inline_barcode_scanner.dart';
 import '../../../../data/models/category_model.dart';
 import 'custom_text_field.dart';

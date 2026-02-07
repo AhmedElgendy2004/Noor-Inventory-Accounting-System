@@ -6,10 +6,10 @@ class InlineBarcodeScanner extends StatefulWidget {
   final VoidCallback onClose;
 
   const InlineBarcodeScanner({
-    Key? key,
+    super.key,
     required this.onBarcodeDetected,
     required this.onClose,
-  }) : super(key: key);
+  });
 
   @override
   State<InlineBarcodeScanner> createState() => _InlineBarcodeScannerState();

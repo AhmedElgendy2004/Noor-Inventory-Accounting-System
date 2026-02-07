@@ -14,12 +14,10 @@ class SalesCubit extends Cubit<SalesState> {
   SalesCubit(this._salesService) : super(SalesInitial());
 
   // === UI Helpers ===
-  List<CustomerModel> _customers = [];
 
   // Initialize Sales Screen (Load Customers, etc.)
   Future<void> initSales() async {
     try {
-      _customers = await _salesService.getCustomers();
       emit(const SalesUpdated(cartItems: [], totalAmount: 0.0));
     } catch (e) {
       emit(SalesError("فشل تحميل البيانات الأولية: $e"));
