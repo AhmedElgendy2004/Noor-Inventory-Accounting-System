@@ -1,7 +1,10 @@
 import 'package:al_noor_gallery/core/constants/constants.dart';
+import 'package:al_noor_gallery/features/inventory/ui/widget/custom_floating_action_button.dart';
+import 'package:al_noor_gallery/features/inventory/ui/widget/product_search_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/widgets/custom_error_widget.dart';
 import '../../../../data/models/category_model.dart';
 import '../logic/inventory_cubit.dart';
 import '../logic/inventory_state.dart';
@@ -31,6 +34,33 @@ class _InventoryScreenState extends State<InventoryScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  // دالة توليد البيانات الاختبارية
+  void _generateMockData() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('توليد بيانات اختبارية'),
+        content: const Text(
+          'هل تريد إضافة 100 منتج عشوائي؟\n'
+          'يستخدم هذا الغرض للاختبار فقط.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.read<InventoryCubit>().generateMockProducts();
+            },
+            child: const Text('توليد'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _deleteCategory(CategoryModel category) async {
@@ -137,23 +167,38 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 child: const Text('إلغاء'),
               ),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   final name = categoryController.text.trim();
                   if (name.isNotEmpty) {
-                    context
-                        .read<InventoryCubit>()
-                        .addNewCategory(name, selectedColor.value)
-                        .then((_) {
-                          context.pop();
-                          SnackBarUtils.showSuccess(
-                            context,
-                            'تمت إضافة التصنيف بنجاح',
-                          );
-                        })
-                        .catchError((e) {
-                          context.pop();
-                          SnackBarUtils.showError(context, 'فشل الإضافة');
-                        });
+                    // 1. خزن الـ Cubit والـ Navigator قبل البدء (اختياري لكن أفضل)
+                    final inventoryCubit = context.read<InventoryCubit>();
+                    Navigator.of(
+                      context,
+                    ); // أو استخدام context.pop مباشرة مع التشيك
+
+                    try {
+                      // 2. تنفيذ العملية
+                      await inventoryCubit.addNewCategory(
+                        name,
+                        selectedColor.toARGB32(),
+                      );
+
+                      // 3. التحقق من أن الـ context لسه موجود قبل أي أكشن في الـ UI
+                      if (!context.mounted) return;
+
+                      // 4. تنفيذ الأكشنز
+                      context.pop(); // قفل الـ Dialog
+                      SnackBarUtils.showSuccess(
+                        context,
+                        'تمت إضافة التصنيف بنجاح',
+                      );
+                    } catch (e) {
+                      // 5. نفس التشيك في حالة الخطأ
+                      if (!context.mounted) return;
+
+                      context.pop();
+                      SnackBarUtils.showError(context, 'فشل الإضافة');
+                    }
                   }
                 },
                 child: const Text('إضافة'),
@@ -167,42 +212,40 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('المخزن')),
+    var scaffold = Scaffold(
+      appBar: AppBar(
+        title: const Text('المخزن'),
+        actions: [
+          // زر مؤقت للتوليد
+          IconButton(
+            icon: const Icon(Icons.playlist_add),
+            tooltip: 'توليد بيانات اختبار',
+            onPressed: _generateMockData,
+          ),
+        ],
+      ),
 
       // زر الإضافة العائم يذهب لشاشة إضافة منتج مباشرةً
-      floatingActionButton: FloatingActionButton.large(
-        onPressed: () {
-          context.push('/add-product');
-        },
-        child: const Text(
-          "   اضافه\nمنتج جديد",
-          style: TextStyle(fontWeight: .bold),
-        ),
-      ),
+      floatingActionButton: CustomFloatingActionButton(),
 
       body: SafeArea(
         child: Column(
           children: [
-            // شريط البحث العام (عند كتابة أي شيء والضغط يمكن الذهاب لمنتجات عامة)
+            // شريط البحث الموحد
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: TextField(
+              child: ProductSearchBar(
                 controller: _searchController,
-                decoration: InputDecoration(
-                  labelText: 'بحث عن منتج (اسم أو باركود)',
-                  prefixIcon: const Icon(Icons.search),
-                  border: const OutlineInputBorder(),
-                ),
-                onSubmitted: (value) {
-                  if (value.isNotEmpty) {
-                    // الانتقال لشاشة المنتجات (الكل) مع تصفية لاحقة (يمكنك تحسين ذلك بتمرير queryParams)
-                    // هنا سننتقل لشاشة categoryId='all' ثم هناك نقوم بالبحث
-                    // لكن ال Cubit مشترك، لذا يمكننا عمل التالي:
-                    context.read<InventoryCubit>().fetchProducts(query: value);
-                    context.push('/products/all');
-                    _searchController.clear();
-                  }
+                // عند الضغط على البحث في لوحة المعلومات، نذهب فوراً
+                onChanged: (val) {},
+                onSubmitted: (val) {
+                  // الانتقال لصفحة البحث مع التركيز
+                  context.push('/products/all?focus=true');
+                },
+                // نجعل الـ TextField مجرد زر للانتقال لصفحة البحث
+                readOnly: true,
+                onTap: () {
+                  context.push('/products/all?focus=true');
                 },
               ),
             ),
@@ -211,7 +254,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               child: BlocConsumer<InventoryCubit, InventoryState>(
                 listener: (context, state) {
                   if (state is InventoryError) {
-                    SnackBarUtils.showError(context, state.message);
+                    SnackBarUtils.showError(context, "حدث خطا اثناء التحميل");
                   }
                 },
                 builder: (context, state) {
@@ -221,6 +264,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   if (state is InventoryLoaded) {
                     return _buildCategoryGrid(state);
                   }
+                  if (state is InventoryError) {
+                    return CustomErrorWidget(
+                      message: "",
+                      onRetry: () =>
+                          context.read<InventoryCubit>().loadInitialData(),
+                    );
+                  }
                   return const SizedBox();
                 },
               ),
@@ -229,6 +279,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ),
       ),
     );
+    return scaffold;
   }
 
   Widget _buildCategoryGrid(InventoryLoaded state) {
@@ -240,7 +291,47 @@ class _InventoryScreenState extends State<InventoryScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // بطاقة إجمالي المنتجات
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(5),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'إجمالي المنتجات في المخزن',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${state.globalProductCount}',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             // زر "كل المنتجات"
             Container(
               width: double.infinity,
@@ -260,7 +351,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   child: Text(
                     'عرض كل المنتجات',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.blueAccent,
                     ),
@@ -270,7 +361,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
 
             // زر إضافة تصنيف جديد
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
             // شبكة التصنيفات
             GridView.builder(
@@ -278,9 +369,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1.2,
+                crossAxisSpacing: 15,
+                mainAxisSpacing: 15,
+                childAspectRatio: 1.1,
               ),
               itemCount: state.categories.length,
               itemBuilder: (context, index) {
@@ -291,7 +382,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
                 return InkWell(
                   onTap: () {
-                    // الانتقال لشاشة المنتجات الخاصة بهذا التصنيف
                     context.push('/products/${category.id}');
                   },
                   onLongPress: () => _deleteCategory(category),
@@ -299,20 +389,49 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     decoration: BoxDecoration(
                       color: color,
                       borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withOpacity(0.4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          category.name,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text(
+                            category.name,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${category.productCount} منتج',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -321,14 +440,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 16.0),
               child: SizedBox(
-                width: 180,
+                width: 170,
                 height: 100,
                 child: OutlinedButton.icon(
                   onPressed: () => _showAddCategoryDialog(context),
-                  icon: const Icon(Icons.add_circle_outline, size: 30),
+                  icon: const Icon(Icons.add_circle_outline, size: 35),
                   label: const Text(
                     ' تصنيف جديد',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.blue.shade700,

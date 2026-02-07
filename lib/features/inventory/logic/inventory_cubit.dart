@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/models/product_model.dart';
@@ -7,12 +8,12 @@ import 'inventory_state.dart';
 
 class InventoryCubit extends Cubit<InventoryState> {
   final ProductService _productService;
-  final SupabaseClient _supabase = Supabase.instance.client;
 
   InventoryCubit(this._productService) : super(InventoryInitial());
 
   static const int _pageSize = 10;
   List<CategoryModel> _cachedCategories = [];
+  int _cachedGlobalCount = 0; // تخزين العدد الإجمالي
 
   // تحميل التصنيفات والعدد الإجمالي عند الدخول (للشاشة الرئيسية)
   Future<void> loadInitialData() async {
@@ -20,12 +21,14 @@ class InventoryCubit extends Cubit<InventoryState> {
     try {
       await loadCategories();
       final totalCount = await _productService.getTotalProductsCount();
+      _cachedGlobalCount = totalCount; // تحديث الكاش
 
       emit(
         InventoryLoaded(
           const [], // لا نحتاج منتجات في شبكة التصنيفات
           categories: List.of(_cachedCategories),
           totalProductCount: totalCount,
+          globalProductCount: _cachedGlobalCount,
           isProductView: false,
         ),
       );
@@ -36,13 +39,7 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   Future<void> loadCategories() async {
     try {
-      final response = await _supabase
-          .from('categories')
-          .select()
-          .order('name', ascending: true);
-
-      final data = response as List<dynamic>;
-      _cachedCategories = data.map((e) => CategoryModel.fromJson(e)).toList();
+      _cachedCategories = await _productService.getCategories();
 
       if (state is InventoryLoaded) {
         emit(
@@ -52,7 +49,8 @@ class InventoryCubit extends Cubit<InventoryState> {
         );
       }
     } catch (e) {
-      print('Error loading categories: $e');
+      // Must rethrow to allow caller (loadInitialData) to handle the error state
+      rethrow;
     }
   }
 
@@ -94,7 +92,8 @@ class InventoryCubit extends Cubit<InventoryState> {
             ),
           );
         } catch (e) {
-          // يمكن إصدار حالة خطأ خفيفة أو تجاهلها
+          // Error in pagination can remain ignored or shown as a snackbar separately
+          // But main thread shouldn't crash
         }
         return;
       }
@@ -103,14 +102,11 @@ class InventoryCubit extends Cubit<InventoryState> {
     // 2. تحميل جديد (أول صفحة)
     emit(InventoryLoading());
     try {
-      // نحافظ على العدد الإجمالي إذا كان موجوداً، أو نحدثه عند عدم البحث
-      int totalCount = 0;
-      if (state is InventoryLoaded) {
-        totalCount = (state as InventoryLoaded).totalProductCount;
-      }
-      if (totalCount == 0 && (query == null || query.isEmpty)) {
-        totalCount = await _productService.getTotalProductsCount();
-      }
+      // جلب العدد المتوافق مع الفلتر الحالي (يدعم البحث والتصنيف)
+      final totalCount = await _productService.getTotalProductsCount(
+        categoryId: categoryId,
+        searchQuery: query,
+      );
 
       final products = await _productService.getProducts(
         searchQuery: query,
@@ -119,14 +115,18 @@ class InventoryCubit extends Cubit<InventoryState> {
         offset: 0,
       );
 
+      // Maintain global count from cache
+      int globalCount = _cachedGlobalCount;
+
       emit(
         InventoryLoaded(
           products,
           categories: List.of(_cachedCategories),
           hasReachedMax: products.length < _pageSize,
-          totalProductCount: totalCount,
+          totalProductCount: totalCount, // Filtered count
+          globalProductCount: globalCount, // Keep dashboard count
           selectedCategoryId: categoryId,
-          isProductView: true, // الانتقال لعرض القائمة
+          isProductView: true,
         ),
       );
     } catch (e) {
@@ -153,13 +153,8 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   Future<void> addNewCategory(String name, int color) async {
     try {
-      final response = await _supabase
-          .from('categories')
-          .insert({'name': name, 'color': color})
-          .select()
-          .single();
+      final newCategory = await _productService.addCategory(name, color);
 
-      final newCategory = CategoryModel.fromJson(response);
       _cachedCategories.add(newCategory);
       // Sort
       _cachedCategories.sort((a, b) => a.name.compareTo(b.name));
@@ -180,14 +175,7 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   Future<void> deleteCategory(String categoryId) async {
     try {
-      // 1. فك ارتباط المنتجات بهذا التصنيف (جعل category_id = null)
-      await _supabase
-          .from('products')
-          .update({'category_id': null})
-          .eq('category_id', categoryId);
-
-      // 2. حذف التصنيف
-      await _supabase.from('categories').delete().eq('id', categoryId);
+      await _productService.deleteCategory(categoryId);
 
       // 3. تحديث القائمة المحلية
       _cachedCategories.removeWhere((c) => c.id == categoryId);
@@ -210,6 +198,8 @@ class InventoryCubit extends Cubit<InventoryState> {
     emit(InventoryLoading());
     try {
       await _productService.addProduct(product);
+      _cachedGlobalCount++; // زيادة العدد
+
       emit(const InventorySuccess('تم إضافة المنتج بنجاح'));
       // العودة للحالة الطبيعية مع وجود التصنيفات
       emit(
@@ -217,6 +207,8 @@ class InventoryCubit extends Cubit<InventoryState> {
           const [],
           categories: List.of(_cachedCategories),
           isProductView: false, // العودة للشبكة
+          globalProductCount: _cachedGlobalCount,
+          totalProductCount: _cachedGlobalCount,
         ),
       );
     } catch (e) {
@@ -238,6 +230,8 @@ class InventoryCubit extends Cubit<InventoryState> {
   Future<void> deleteProduct(String id) async {
     try {
       await _productService.deleteProduct(id);
+      _cachedGlobalCount--; // نقص العدد
+
       // Refresh current view logic
       if (state is InventoryLoaded) {
         final currentState = state as InventoryLoaded;
@@ -251,6 +245,53 @@ class InventoryCubit extends Cubit<InventoryState> {
       }
     } catch (e) {
       emit(InventoryError(e.toString()));
+    }
+  }
+
+  /// ⚠️ دالة مؤقتة لتوليد بيانات اختبارية (نسخة محسنة)
+  Future<void> generateMockProducts() async {
+    if (_cachedCategories.isEmpty) {
+      emit(const InventoryError("يجب إضافة تصنيفات أولاً لتوليد المنتجات!"));
+      return;
+    }
+
+    emit(InventoryLoading());
+    try {
+      final random = Random();
+      final List<ProductModel> mockProducts = [];
+
+      // توليد 100 منتج
+      for (int i = 0; i < 100; i++) {
+        final category =
+            _cachedCategories[random.nextInt(_cachedCategories.length)];
+        final purchasePrice = 10 + random.nextInt(90); // 10 to 100
+        final retailPrice =
+            purchasePrice + 10 + random.nextInt(50); // purchase + 10 to 60
+
+        mockProducts.add(
+          ProductModel(
+            name: 'منتج تجريبي ${random.nextInt(10000)}',
+            barcode: 'MOCK-${DateTime.now().millisecondsSinceEpoch}-$i',
+            categoryId: category.id,
+            brandCompany: 'شركة تجريبية',
+            purchasePrice: purchasePrice.toDouble(),
+            retailPrice: retailPrice.toDouble(),
+            wholesalePrice: (purchasePrice + 5).toDouble(),
+            stockQuantity: 1 + random.nextInt(100),
+            minStockLevel: 5,
+          ),
+        );
+      }
+
+      // إرسال دفعة واحدة (أسرع بكثير)
+      await _productService.addProducts(mockProducts);
+
+      // تحديث البيانات وعرضها
+      await loadInitialData();
+    } catch (e) {
+      emit(InventoryError('فشل توليد البيانات: $e'));
+      // محاولة العودة للوضع الطبيعي في حال الفشل
+      loadInitialData();
     }
   }
 }

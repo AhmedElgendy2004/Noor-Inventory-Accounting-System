@@ -1,8 +1,9 @@
 import 'package:al_noor_gallery/data/models/category_model.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/utils/date_picker_utils.dart';
+import '../../../core/constants/constants.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../data/models/product_model.dart';
 import '../logic/inventory_cubit.dart';
@@ -12,7 +13,7 @@ import 'widget/product_form_content.dart';
 class EditProductScreen extends StatefulWidget {
   // هذا المتغير إلزامي لأننا في شاشة تعديل
   final ProductModel product;
-  const EditProductScreen({Key? key, required this.product}) : super(key: key);
+  const EditProductScreen({super.key, required this.product});
 
   @override
   State<EditProductScreen> createState() => _EditProductScreenState();
@@ -21,36 +22,16 @@ class EditProductScreen extends StatefulWidget {
 class _EditProductScreenState extends State<EditProductScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // قائمة الشهور العربية
-  final List<String> _arabicMonths = [
-    "يناير",
-    "فبراير",
-    "مارس",
-    "أبريل",
-    "مايو",
-    "يونيو",
-    "يوليو",
-    "أغسطس",
-    "سبتمبر",
-    "أكتوبر",
-    "نوفمبر",
-    "ديسمبر",
-  ];
-
-  // تهيئة الكنترولرز
   late final Map<String, TextEditingController> _controllers;
+  String? _selectedCategoryId;
+
+  // متغيرات الباركود والتاريخ
   bool _isScanning = false;
   DateTime? _selectedExpiryDate;
-  String? _selectedCategoryId;
 
   // متغيرات الصلاحية
   bool _isCalculatedExpiryMode = false;
   DateTime? _productionDate;
-
-  // دالة مساعدة لتحويل DateTime لنص عربي
-  String _formatDateToArabic(DateTime date) {
-    return "${_arabicMonths[date.month - 1]} ${date.year}";
-  }
 
   @override
   void initState() {
@@ -59,28 +40,17 @@ class _EditProductScreenState extends State<EditProductScreen> {
     context.read<InventoryCubit>().loadCategories();
     _initControllers();
 
-    // الاستماع لتغيير مدة الصلاحية
-    _controllers['validityMonths']!.addListener(_calculateExpiry);
+    // الاستماع لتغيير مدة الصلاحية لحساب التاريخ تلقائياً
+    _controllers['validityMonths']!.addListener(_calculateExpiryDate);
   }
 
-  void _calculateExpiry() {
-    if (!_isCalculatedExpiryMode || _productionDate == null) return;
-
-    final monthsStr = _controllers['validityMonths']!.text;
-    final months = int.tryParse(monthsStr);
-
-    if (months != null && months > 0) {
-      final newDate = DateTime(
-        _productionDate!.year,
-        _productionDate!.month + months,
-        _productionDate!.day,
-      );
-
-      setState(() {
-        _selectedExpiryDate = newDate;
-        _controllers['expiryDate']!.text = _formatDateToArabic(newDate);
-      });
+  @override
+  void dispose() {
+    _controllers['validityMonths']?.removeListener(_calculateExpiryDate);
+    for (var controller in _controllers.values) {
+      controller.dispose();
     }
+    super.dispose();
   }
 
   // تعبئة البيانات من المنتج الموجود
@@ -105,7 +75,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
       ),
       'expiryDate': TextEditingController(
         text: p.expiryDate != null
-            ? _formatDateToArabic(p.expiryDate!) // استخدام الصيغة العربية
+            ? DatePickerUtils.formatDateToArabic(p.expiryDate!)
             : '',
       ),
       'productionDate': TextEditingController(),
@@ -113,162 +83,74 @@ class _EditProductScreenState extends State<EditProductScreen> {
     };
   }
 
-  @override
-  void dispose() {
-    _controllers['validityMonths']!.removeListener(_calculateExpiry);
-    for (var controller in _controllers.values) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
+  // ✅ دالة الحساب (باستخدام Utils)
+  void _calculateExpiryDate() {
+    if (!_isCalculatedExpiryMode || _productionDate == null) return;
 
-  // استخدمنا الدالة العامة التي أضفناها في AddProductScreen كمرجع، ولكن هنا سنعيد كتابتها للتسهيل
-  // يمكن نقلها لملف utils لاحقاً
-  Future<void> _pickDateGeneral(
-    DateTime? initialDate,
-    Function(DateTime) onConfirm, {
-    required int startYear,
-    required int endYear,
-  }) async {
-    final now = DateTime.now();
-    int selectedMonth = initialDate?.month ?? now.month;
-    int selectedYear = initialDate?.year ?? now.year;
+    final monthsStr = _controllers['validityMonths']!.text;
+    final months = int.tryParse(monthsStr);
 
-    // التأكد من أن السنة المختارة تقع ضمن النطاق
-    if (selectedYear < startYear) selectedYear = startYear;
-    if (selectedYear > endYear) selectedYear = endYear;
+    if (months != null && months > 0) {
+      final newDate = DatePickerUtils.calculateExpiryDate(
+        productionDate: _productionDate!,
+        validityMonths: months,
+      );
 
-    // توليد قائمة السنين بناءً على الحدود المرسلة
-    final int count = endYear - startYear + 1;
-    final List<int> years = List.generate(count, (index) => startYear + index);
-
-    await showModalBottomSheet(
-      context: context,
-      builder: (BuildContext builder) {
-        return Container(
-          height: 300,
-          color: Colors.white,
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                color: Colors.grey[100],
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () => context.pop(),
-                      child: const Text(
-                        'إلغاء',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                    const Text(
-                      'اختر التاريخ (عربي)',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        onConfirm(DateTime(selectedYear, selectedMonth));
-                        context.pop();
-                      },
-                      child: const Text('تم'),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: CupertinoPicker(
-                        scrollController: FixedExtentScrollController(
-                          initialItem: selectedMonth - 1,
-                        ),
-                        itemExtent: 40,
-                        onSelectedItemChanged: (int index) =>
-                            selectedMonth = index + 1,
-                        children: _arabicMonths
-                            .map((month) => Center(child: Text(month)))
-                            .toList(),
-                      ),
-                    ),
-                    Expanded(
-                      child: CupertinoPicker(
-                        scrollController: FixedExtentScrollController(
-                          initialItem: years.indexOf(selectedYear) != -1
-                              ? years.indexOf(selectedYear)
-                              : 0,
-                        ),
-                        itemExtent: 40,
-                        onSelectedItemChanged: (int index) =>
-                            selectedYear = years[index],
-                        children: years
-                            .map((year) => Center(child: Text(year.toString())))
-                            .toList(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+      setState(() {
+        _selectedExpiryDate = newDate;
+        _controllers['expiryDate']!.text = DatePickerUtils.formatDateToArabic(
+          newDate,
         );
-      },
-    );
+      });
+    }
   }
 
+  // ✅ اختيار تاريخ الانتهاء المباشر (باستخدام Utils)
   Future<void> _pickDate() async {
     final now = DateTime.now();
-    await _pickDateGeneral(
-      _selectedExpiryDate,
-      (date) {
-        setState(() {
-          _selectedExpiryDate = date;
-          _controllers['expiryDate']!.text = _formatDateToArabic(date);
-        });
-      },
+
+    await DatePickerUtils.showMonthYearPicker(
+      context,
+      initialDate: _selectedExpiryDate,
       startYear: now.year,
       endYear: now.year + 10,
-    );
-  }
-
-  Future<void> _pickProductionDate() async {
-    final now = DateTime.now();
-    await _pickDateGeneral(
-      _productionDate,
-      (date) {
+      onConfirm: (date) {
         setState(() {
-          _productionDate = date;
-          _controllers['productionDate']!.text = _formatDateToArabic(date);
-          _calculateExpiry();
+          _selectedExpiryDate = date;
+          _controllers['expiryDate']!.text = DatePickerUtils.formatDateToArabic(
+            date,
+          );
         });
       },
-      startYear: now.year - 20,
-      endYear: now.year,
     );
   }
 
-  // عرض نافذة إضافة تصنيف
-  void _showAddCategoryDialog(BuildContext context) {
-    final TextEditingController _categoryController = TextEditingController();
+  // ✅ اختيار تاريخ الإنتاج (باستخدام Utils)
+  Future<void> _pickProductionDate() async {
+    final now = DateTime.now();
 
-    final List<Color> categoryColors = [
-      Colors.blue.shade100,
-      Colors.green.shade100,
-      Colors.orange.shade100,
-      Colors.purple.shade100,
-      Colors.red.shade100,
-      Colors.teal.shade100,
-      Colors.amber.shade100,
-      Colors.pink.shade100,
-      Colors.indigo.shade100,
-      Colors.brown.shade100,
-    ];
-    Color selectedColor = categoryColors[0];
+    await DatePickerUtils.showMonthYearPicker(
+      context,
+      initialDate: _productionDate,
+      startYear: now.year - 10,
+      endYear: now.year,
+      onConfirm: (date) {
+        setState(() {
+          _productionDate = date;
+          _controllers['productionDate']!.text =
+              DatePickerUtils.formatDateToArabic(date);
+
+          // تحديث تاريخ الانتهاء تلقائياً
+          _calculateExpiryDate();
+        });
+      },
+    );
+  }
+
+  // عرض نافذة إضافة تصنيف (مطابق لصفحة الإضافة)
+  void _showAddCategoryDialog(BuildContext context) {
+    final TextEditingController categoryController = TextEditingController();
+    Color selectedColor = KlistCategoryColors[0];
 
     showDialog(
       context: context,
@@ -282,7 +164,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
-                    controller: _categoryController,
+                    controller: categoryController,
                     decoration: const InputDecoration(
                       labelText: 'اسم التصنيف',
                       hintText: 'مثال: مستحضرات تجميل',
@@ -298,8 +180,8 @@ class _EditProductScreenState extends State<EditProductScreen> {
                     spacing: 12,
                     runSpacing: 12,
                     alignment: WrapAlignment.center,
-                    children: categoryColors.map((color) {
-                      final isSelected = selectedColor.value == color.value;
+                    children: KlistCategoryColors.map((color) {
+                      final isSelected = selectedColor == color;
                       return GestureDetector(
                         onTap: () {
                           setState(() {
@@ -344,12 +226,13 @@ class _EditProductScreenState extends State<EditProductScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  final name = _categoryController.text.trim();
+                  final name = categoryController.text.trim();
                   if (name.isNotEmpty) {
                     context
                         .read<InventoryCubit>()
                         .addNewCategory(name, selectedColor.value)
                         .then((_) {
+                          if (!context.mounted) return;
                           context.pop();
                           SnackBarUtils.showSuccess(
                             context,
@@ -357,7 +240,9 @@ class _EditProductScreenState extends State<EditProductScreen> {
                           );
                         })
                         .catchError((e) {
+                          if (!context.mounted) return;
                           context.pop();
+                          SnackBarUtils.showError(context, 'فشل الإضافة');
                         });
                   }
                 },
@@ -410,10 +295,8 @@ class _EditProductScreenState extends State<EditProductScreen> {
       appBar: AppBar(
         title: const Text('تعديل المنتج'),
         leading: IconButton(
-          onPressed: () {
-            context.pop();
-          },
-          icon: Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+          icon: const Icon(Icons.arrow_back),
         ),
       ),
       body: SafeArea(
@@ -421,13 +304,8 @@ class _EditProductScreenState extends State<EditProductScreen> {
           listener: (context, state) {
             if (state is InventorySuccess) {
               SnackBarUtils.showSuccess(context, 'تم تعديل المنتج بنجاح');
-
-              // إغلاق الشاشة فوراً عند النجاح كما طلبت
-              if (mounted) {
-                context.pop();
-              }
+              if (mounted) context.pop();
             } else if (state is InventoryError) {
-              // SnackBarUtils.showError(context, state.message);
               SnackBarUtils.showError(context, 'فشل التعديل');
             }
           },
@@ -436,7 +314,6 @@ class _EditProductScreenState extends State<EditProductScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            // استخدام الـ Widget المشتركة
             List<CategoryModel> categories = [];
             if (state is InventoryLoaded) {
               categories = state.categories;
@@ -463,10 +340,16 @@ class _EditProductScreenState extends State<EditProductScreen> {
                 onExpiryModeChanged: (val) {
                   setState(() {
                     _isCalculatedExpiryMode = val;
+                    // تصفير التواريخ إذا تم الخروج من الوضع
                     if (!val) {
                       _productionDate = null;
                       _controllers['productionDate']!.clear();
                       _controllers['validityMonths']!.clear();
+                      // لا نصفر تاريخ الانتهاء الموجود أصلاً لأنه قد يكون هو المطلوب
+                    } else {
+                      // إذا دخلنا الوضع، نصفر التواريخ للبدء من جديد
+                      _selectedExpiryDate = null;
+                      _controllers['expiryDate']!.clear();
                     }
                   });
                 },

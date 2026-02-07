@@ -17,7 +17,8 @@ class InventoryLoaded extends InventoryState {
   final List<ProductModel> products;
   final List<CategoryModel> categories;
   final bool hasReachedMax;
-  final int totalProductCount;
+  final int totalProductCount; // Count of products in current view (filtered)
+  final int globalProductCount; // Total count of products in DB (for dashboard)
   final String? selectedCategoryId; // null means "All" if in product view
   final bool
   isProductView; // true if showing product list, false if showing category grid
@@ -27,6 +28,7 @@ class InventoryLoaded extends InventoryState {
     this.categories = const [],
     this.hasReachedMax = false,
     this.totalProductCount = 0,
+    this.globalProductCount = 0,
     this.selectedCategoryId,
     this.isProductView = false,
   });
@@ -36,6 +38,7 @@ class InventoryLoaded extends InventoryState {
     List<CategoryModel>? categories,
     bool? hasReachedMax,
     int? totalProductCount,
+    int? globalProductCount,
     String? selectedCategoryId,
     bool? isProductView,
   }) {
@@ -44,6 +47,7 @@ class InventoryLoaded extends InventoryState {
       categories: categories ?? this.categories,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       totalProductCount: totalProductCount ?? this.totalProductCount,
+      globalProductCount: globalProductCount ?? this.globalProductCount,
       selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
       isProductView: isProductView ?? this.isProductView,
     );
@@ -55,6 +59,7 @@ class InventoryLoaded extends InventoryState {
     categories,
     hasReachedMax,
     totalProductCount,
+    globalProductCount,
     selectedCategoryId,
     isProductView,
   ];

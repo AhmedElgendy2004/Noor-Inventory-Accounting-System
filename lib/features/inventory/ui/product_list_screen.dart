@@ -1,9 +1,9 @@
-// ignore_for_file: depend_on_referenced_packages
-
+import 'package:al_noor_gallery/features/inventory/ui/widget/custom_floating_action_button.dart';
+import 'package:al_noor_gallery/features/inventory/ui/widget/product_search_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/utils/inline_barcode_scanner.dart';
+import '../../../../core/widgets/custom_error_widget.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../../data/models/product_model.dart';
 import '../../../../data/models/category_model.dart';
@@ -22,7 +22,7 @@ class ProductListScreen extends StatefulWidget {
 class _ProductListScreenState extends State<ProductListScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isScanning = false;
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -31,6 +31,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final categoryId = widget.categoryId == 'all' ? null : widget.categoryId;
       context.read<InventoryCubit>().fetchProducts(categoryId: categoryId);
+
+      // Check if we should focus search
+      final uri = GoRouterState.of(context).uri;
+      if (uri.queryParameters['focus'] == 'true') {
+        _searchFocusNode.requestFocus();
+      }
     });
     _scrollController.addListener(_onScroll);
   }
@@ -39,18 +45,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    if (_isScanning) return;
     final state = context.read<InventoryCubit>().state;
     if (state is InventoryLoaded) {
       if (_scrollController.position.pixels >=
           _scrollController.position.maxScrollExtent * 0.9) {
-        final categoryId = widget.categoryId == 'all'
+        // إذا كان هناك بحث، لا نستخدم categoryId لأنه بحث شامل
+        // إذا لم يكن هناك بحث، نستخدم categoryId الحالي
+        final isSearching = _searchController.text.isNotEmpty;
+        final categoryId = isSearching
             ? null
-            : widget.categoryId;
+            : (widget.categoryId == 'all' ? null : widget.categoryId);
+
         context.read<InventoryCubit>().fetchProducts(
           categoryId: categoryId,
           query: _searchController.text,
@@ -61,19 +71,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   void _onSearchChanged(String value) {
-    if (value.isNotEmpty) {
-      final categoryId = widget.categoryId == 'all' ? null : widget.categoryId;
-      context.read<InventoryCubit>().fetchProducts(
-        categoryId: categoryId,
-        query: value,
-      );
-    } else {
-      final categoryId = widget.categoryId == 'all' ? null : widget.categoryId;
-      context.read<InventoryCubit>().fetchProducts(
-        categoryId: categoryId,
-        query: null,
-      );
-    }
+    // التنفيذ الفوري للبحث الشامل
+    final categoryId = value.isNotEmpty
+        ? null
+        : (widget.categoryId == 'all' ? null : widget.categoryId);
+
+    context.read<InventoryCubit>().fetchProducts(
+      categoryId: categoryId,
+      query: value.isEmpty ? null : value,
+    );
   }
 
   Future<void> _deleteProduct(ProductModel product) async {
@@ -107,7 +113,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('المنتجات'),
+        title: BlocBuilder<InventoryCubit, InventoryState>(
+          builder: (context, state) {
+            String title = 'عدد المنتجات';
+            if (state is InventoryLoaded) {
+              title += ' ( ${state.totalProductCount} )';
+            }
+            return Text(title);
+          },
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -117,102 +131,47 @@ class _ProductListScreenState extends State<ProductListScreen> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          // استخدام navigation عبر GoRouter
-          await context.push('/add-product');
-          // عند العودة، قم بتحديث القائمة الحالية (result قد يكون مفيداً للتحقق من الإضافة)
-          if (mounted) {
-            final categoryId = widget.categoryId == 'all'
-                ? null
-                : widget.categoryId;
-            context.read<InventoryCubit>().fetchProducts(
-              categoryId: categoryId,
-              query: _searchController.text,
-            );
-          }
-        },
-        child: const Icon(Icons.add),
+      floatingActionButton: CustomFloatingActionButtonProductScreen(
+        widget: widget,
+        searchController: _searchController,
       ),
+      //-------------------------------------------------------------------------
       body: SafeArea(
         child: Column(
           children: [
-            // Search Bar
+            // شريط البحث الموحد
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  if (_isScanning)
-                    InlineBarcodeScanner(
-                      onBarcodeDetected: (code) {
-                        setState(() {
-                          _searchController.text = code;
-                          _isScanning = false;
-                        });
-                        _onSearchChanged(code);
-                      },
-                      onClose: () => setState(() => _isScanning = false),
-                    ),
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      labelText: 'بحث عن منتج (اسم أو باركود)',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_searchController.text.isNotEmpty)
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () {
-                                _searchController.clear();
-                                _onSearchChanged('');
-                              },
-                            ),
-                          IconButton(
-                            icon: Icon(
-                              _isScanning
-                                  ? Icons.stop_circle
-                                  : Icons.qr_code_scanner,
-                            ),
-                            color: _isScanning ? Colors.red : null,
-                            onPressed: () {
-                              setState(() {
-                                _isScanning = !_isScanning;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      border: const OutlineInputBorder(),
-                    ),
-                    onChanged: _onSearchChanged,
-                  ),
-                  // اسم التصنيف أو العدد
-                  BlocBuilder<InventoryCubit, InventoryState>(
-                    builder: (context, state) {
-                      if (state is InventoryLoaded &&
-                          state.selectedCategoryId != null) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              'التصنيف: ${state.categories.firstWhere((c) => c.id == state.selectedCategoryId, orElse: () => state.categories.isEmpty ? CategoryModel(name: '') : state.categories.first).name}',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.blue.shade800,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ],
+              child: ProductSearchBar(
+                controller: _searchController,
+                onChanged: _onSearchChanged,
+                onSubmitted: _onSearchChanged,
+                focusNode: _searchFocusNode,
               ),
+            ),
+
+            // اسم التصنيف أو العدد
+            BlocBuilder<InventoryCubit, InventoryState>(
+              builder: (context, state) {
+                if (state is InventoryLoaded &&
+                    state.selectedCategoryId != null) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'التصنيف: ${state.categories.firstWhere((c) => c.id == state.selectedCategoryId, orElse: () => state.categories.isEmpty ? CategoryModel(name: '') : state.categories.first).name}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.blue.shade800,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
             ),
 
             // Product List
@@ -222,7 +181,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   if (state is InventoryError) {
                     SnackBarUtils.showError(
                       context,
-                      'حدث خطأ: ${state.message}',
+                      'حدث خطأ:/n --------/n ${state.message}',
                     );
                   }
                 },
@@ -245,12 +204,18 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
                     return RefreshIndicator(
                       onRefresh: () async {
-                        final categoryId = widget.categoryId == 'all'
+                        final isSearching = _searchController.text.isNotEmpty;
+                        final categoryId = isSearching
                             ? null
-                            : widget.categoryId;
+                            : (widget.categoryId == 'all'
+                                  ? null
+                                  : widget.categoryId);
+
                         await context.read<InventoryCubit>().fetchProducts(
                           categoryId: categoryId,
-                          query: _searchController.text,
+                          query: _searchController.text.isEmpty
+                              ? null
+                              : _searchController.text,
                         );
                       },
                       child: ListView.builder(
@@ -273,6 +238,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               vertical: 8,
                             ),
                             child: ListTile(
+                              //name
                               title: Text(
                                 product.name,
                                 style: const TextStyle(
@@ -283,8 +249,103 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('الباركود: ${product.barcode}'),
-                                  Text(
-                                    'السعر: ${product.retailPrice} | الكمية: ${product.stockQuantity}',
+                                  Divider(
+                                    color: Colors.grey.shade300, // لون الخط
+                                    thickness: 1, // سُمك الخط
+                                    indent: 16, // مسافة فاضية من اليمين
+                                    endIndent: 16, // مسافة فاضية من اليسار
+                                  ),
+                                  //سعر الشراء
+                                  Row(
+                                    children: [
+                                      Text(
+                                        "شراء:  ",
+                                        style: TextStyle(
+                                          color: Colors.brown.shade500,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        product.purchasePrice % 1 == 0
+                                            ? product.purchasePrice
+                                                  .toInt()
+                                                  .toString() // لو صحيح يظهر بدون كسور
+                                            : product.purchasePrice.toString(),
+                                        style: TextStyle(
+                                          color: Colors.brown.shade500,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  //  سعر البيع قطاعي
+                                  Row(
+                                    children: [
+                                      Text(
+                                        "البيع قطاعي:  ",
+                                        style: TextStyle(
+                                          color: Colors.green.shade700,
+
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        product.retailPrice % 1 == 0
+                                            ? product.retailPrice
+                                                  .toInt()
+                                                  .toString() // لو صحيح يظهر بدون كسور
+                                            : product.retailPrice
+                                                  .toString(), // لو كسر يظهر كما هو
+                                        style: TextStyle(
+                                          color: Colors.green.shade700,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  //  سعر البيع جمله
+                                  Row(
+                                    children: [
+                                      Text(
+                                        "البيع جمله:   ",
+                                        style: TextStyle(
+                                          color: Colors.orange.shade900,
+
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        product.wholesalePrice % 1 == 0
+                                            ? product.wholesalePrice
+                                                  .toInt()
+                                                  .toString() // لو صحيح يظهر بدون كسور
+                                            : product.wholesalePrice
+                                                  .toString(), // لو كسر يظهر كما هو
+                                        style: TextStyle(
+                                          color: Colors.orange.shade900,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Divider(
+                                    color: Colors.grey.shade300, // لون الخط
+                                    thickness: 1, // سُمك الخط
+                                    indent: 16, // مسافة فاضية من اليمين
+                                    endIndent: 16, // مسافة فاضية من اليسار
+                                  ),
+                                //  الكمية
+                                  Align(
+                                    alignment: AlignmentGeometry.bottomLeft,
+                                    child: Text(
+                                      ' الكمية:   ${product.stockQuantity}',
+                                    ),
                                   ),
                                 ],
                               ),
@@ -319,18 +380,21 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       ),
                     );
                   } else if (state is InventoryError) {
-                    return Center(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final categoryId = widget.categoryId == 'all'
-                              ? null
-                              : widget.categoryId;
-                          context.read<InventoryCubit>().fetchProducts(
-                            categoryId: categoryId,
-                          );
-                        },
-                        child: const Text('إعادة المحاولة'),
-                      ),
+                    return CustomErrorWidget(
+                      message: state.message,
+                      onRetry: () {
+                        final isSearching = _searchController.text.isNotEmpty;
+                        final categoryId = isSearching
+                            ? null
+                            : (widget.categoryId == 'all'
+                                  ? null
+                                  : widget.categoryId);
+
+                        context.read<InventoryCubit>().fetchProducts(
+                          categoryId: categoryId,
+                          query: isSearching ? _searchController.text : null,
+                        );
+                      },
                     );
                   }
                   return const SizedBox.shrink();

@@ -1,9 +1,55 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/supabase_constants.dart';
 import '../models/product_model.dart';
+import '../models/category_model.dart';
 
 class ProductService {
   final SupabaseClient _supabase = Supabase.instance.client;
+
+  /// Fetch all categories with product count
+  Future<List<CategoryModel>> getCategories() async {
+    try {
+      final response = await _supabase
+          .from('categories')
+          .select('*, products(count)')
+          .order('name', ascending: true);
+
+      final data = response as List<dynamic>;
+      return data.map((e) => CategoryModel.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Error fetching categories:/n --------/n $e');
+    }
+  }
+
+  /// Add a new category
+  Future<CategoryModel> addCategory(String name, int color) async {
+    try {
+      final response = await _supabase
+          .from('categories')
+          .insert({'name': name, 'color': color})
+          .select()
+          .single();
+      return CategoryModel.fromJson(response);
+    } catch (e) {
+      throw Exception('Error adding category:/n --------/n $e');
+    }
+  }
+
+  /// Delete a category
+  Future<void> deleteCategory(String categoryId) async {
+    try {
+      // 1. Unlink products
+      await _supabase
+          .from(SupabaseConstants.productsTable)
+          .update({'category_id': null})
+          .eq('category_id', categoryId);
+
+      // 2. Delete category
+      await _supabase.from('categories').delete().eq('id', categoryId);
+    } catch (e) {
+      throw Exception('Error deleting category:/n --------/n $e');
+    }
+  }
 
   /// Adds a new product to the database
   Future<void> addProduct(ProductModel product) async {
@@ -13,7 +59,17 @@ class ProductService {
           .insert(product.toJson());
     } catch (e) {
       // In a real app, strict error handling is better
-      throw Exception('Error adding product: $e');
+      throw Exception('Error adding product:/n --------/n $e');
+    }
+  }
+
+  /// Adds multiple products to the database (Bulk Insert)
+  Future<void> addProducts(List<ProductModel> products) async {
+    try {
+      final data = products.map((e) => e.toJson()).toList();
+      await _supabase.from(SupabaseConstants.productsTable).insert(data);
+    } catch (e) {
+      throw Exception('Error adding products:/n --------/n $e');
     }
   }
 
@@ -29,7 +85,7 @@ class ProductService {
       if (response == null) return null;
       return ProductModel.fromJson(response);
     } catch (e) {
-      throw Exception('Error fetching product: $e');
+      throw Exception('Error fetching product: /n --------/n $e');
     }
   }
 
@@ -75,19 +131,27 @@ class ProductService {
   }
 
   /// Get total count of products
-  Future<int> getTotalProductsCount() async {
+  Future<int> getTotalProductsCount({
+    String? categoryId,
+    String? searchQuery,
+  }) async {
     try {
-      final response = await _supabase
-          .from(SupabaseConstants.productsTable)
-          .count();
-      // .count() returns the int directly in modern SDKs or via response depending on version.
-      // If the SDK version returns Future<int>, this is correct.
-      // If it returns PostgrestResponse, we need to inspect it.
-      // Given standard Supabase Flutter usage: count() usually returns Future<int>.
-      return response;
+      var query = _supabase.from(SupabaseConstants.productsTable).count();
+
+      if (categoryId != null && categoryId.isNotEmpty) {
+        query = query.eq('category_id', categoryId);
+      }
+
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        query = query.or(
+          'name.ilike.%$searchQuery%,barcode.ilike.%$searchQuery%',
+        );
+      }
+
+      return await query;
     } catch (e) {
-      // Fallback or rethrow
-      return 0;
+      // Rethrow to allow UI to show error screen properly
+      rethrow;
     }
   }
 

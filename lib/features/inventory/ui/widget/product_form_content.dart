@@ -54,6 +54,7 @@ class ProductFormContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      key: const Key('productFormScrollView'), // Added Key for Testing
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16.0),
       child: Form(
@@ -109,7 +110,7 @@ class ProductFormContent extends StatelessWidget {
                       decoration: const InputDecoration(
                         labelText: 'التصنيف',
                         border: OutlineInputBorder(),
-                       // prefixIcon: Icon(Icons.category),
+                        // prefixIcon: Icon(Icons.category),
                       ),
                       items: categories.map((cat) {
                         return DropdownMenuItem(

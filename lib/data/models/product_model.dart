@@ -12,6 +12,8 @@ class ProductModel {
   final DateTime? expiryDate;
   final int? expiryAlertDays;
   final DateTime? lastPurchaseDate;
+  //lastPurchaseDate
+  // عاوز دا يتسجل تلقائي بتاريخ الانشاء ويظهر عند الدخول لشاشه التعديل
   final String? supplierId;
   final String? categoryId;
   final String? categoryName; // للعرض فقط
