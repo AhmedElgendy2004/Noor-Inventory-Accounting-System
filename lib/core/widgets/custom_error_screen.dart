@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 
 class CustomErrorScreen extends StatelessWidget {
-  final String message;
   final VoidCallback onRetry;
 
-  const CustomErrorScreen({
-    super.key,
-    required this.message,
-    required this.onRetry,
-  });
+  const CustomErrorScreen({super.key, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -39,12 +34,7 @@ class CustomErrorScreen extends StatelessWidget {
                 color: Colors.black87,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-            ),
+
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,

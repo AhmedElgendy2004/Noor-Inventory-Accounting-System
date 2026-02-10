@@ -1,6 +1,6 @@
 import 'package:go_router/go_router.dart';
-import '../../features/home/ui/home_screen.dart'; // Import Home
-import '../../features/sales/ui/sales_screen.dart'; // Import POS
+import '../../features/home/ui/home_screen.dart'; 
+import '../../features/sales/ui/sales_screen.dart'; 
 import '../../features/inventory/ui/inventory_screen.dart';
 import '../../features/inventory/ui/product_list_screen.dart';
 import '../../features/inventory/ui/add_product_screen.dart';

@@ -17,18 +17,16 @@ class HomeScreen extends StatelessWidget {
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.blue.shade800, Colors.blue.shade400],
+                    colors: [const Color(0xFF1565C0), Colors.blue.shade400],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center, // توسيط عمودي
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.store, size: 60, color: Colors.white54),
-                    const SizedBox(
-                      width: 10,
-                    ), // مسافة بسيطة بين الأيقونة والكلمة
+                    Image.asset("assets/image/logo_store.png"),
+                    const SizedBox(width: 20),
                     Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

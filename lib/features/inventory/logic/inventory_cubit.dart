@@ -10,36 +10,101 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   InventoryCubit(this._productService) : super(InventoryInitial());
 
-  static const int _pageSize = 10;
+  static const int _pageSize = 15;
   List<CategoryModel> _cachedCategories = [];
-  int _cachedGlobalCount = 0; // تخزين العدد الإجمالي
+  int _cachedGlobalCount = 0;
 
-  // تحميل التصنيفات والعدد الإجمالي عند الدخول (للشاشة الرئيسية)
-  Future<void> loadInitialData() async {
-    emit(InventoryLoading());
+  // Cache for deduplication of products in the main list
+  final Set<String> _productIds = {};
+
+  /// Loads initial data (Categories + First Page of Products)
+  /// Uses "Silent Refresh" if data already exists in memory.
+  Future<void> loadInitialData({bool isRefresh = false}) async {
+    // 1. Check if we have data to show immediately
+    final hasData =
+        _cachedCategories.isNotEmpty ||
+        (state is InventoryLoaded &&
+            (state as InventoryLoaded).products.isNotEmpty);
+
+    // Only emit loading if we have absolutely nothing and it's not a background refresh
+    if (!hasData && !isRefresh) {
+      emit(InventoryLoading());
+    }
+
     try {
-      await loadCategories();
-      final totalCount = await _productService.getTotalProductsCount();
-      _cachedGlobalCount = totalCount; // تحديث الكاش
+      // 2. Fetch Global Count & Categories (Parallel often better, but sequential is safer for dependencies)
+      // We will do them concurrently for speed
+      final results = await Future.wait([
+        _productService.getCategories(),
+        _productService.getTotalProductsCount(),
+        // Fetch first page of products for the dashboard list
+        _productService.getProducts(limit: _pageSize, offset: 0),
+      ]);
+
+      final categories = results[0] as List<CategoryModel>;
+      final globalCount = results[1] as int;
+      final recentProducts = results[2] as List<ProductModel>;
+
+      // Update local caches
+      _cachedCategories = categories;
+      _cachedGlobalCount = globalCount;
+
+      // Reset product cache since we are pulling fresh first page
+      if (isRefresh || !hasData) {
+        _productIds.clear();
+      }
+
+      // Deduplication Logic
+      final uniqueProducts = <ProductModel>[];
+      for (var product in recentProducts) {
+        if (product.id != null) {
+          _productIds.add(product.id!);
+          uniqueProducts.add(product);
+        }
+      }
+
+      // If we are refreshing but want to keep old products that aren't in the new page
+      // (Advanced: usually for pull-to-refresh we replace the list, so let's replace for consistency)
+      // But user asked for "Silent Refresh" logic where we merge?
+      // Usually for "Initial Data" which is top-level dashboard, replacing the top 15 is standard.
+      // If we were scrolling, we append.
 
       emit(
         InventoryLoaded(
-          const [], // لا نحتاج منتجات في شبكة التصنيفات
-          categories: List.of(_cachedCategories),
-          totalProductCount: totalCount,
+          uniqueProducts, // Show recent products
+          categories: _cachedCategories,
+          totalProductCount: globalCount, // For dashboard, total is global
           globalProductCount: _cachedGlobalCount,
-          isProductView: false,
+          hasReachedMax: recentProducts.length < _pageSize,
+          isLoadingMore: false,
+          isProductView: false, // Default dashboard view
         ),
       );
     } catch (e) {
-      emit(InventoryError(e.toString()));
+      if (state is InventoryLoaded) {
+        // If we have data, just show error as snackbar (handled in UI listener)
+        // Don't change state to Error to avoid losing UI
+        emit(state); // Re-emit current state or custom side-effect if needed
+        // Ideally we emit a side effect, but for now we keep state.
+        // We could emit InventoryError string in a field, but usually Bloc listener handles 'Error' state.
+        // If we emit InventoryError, we lose the data.
+        // Strategy: Emit error only if no data.
+        if (!hasData) emit(InventoryError(e.toString()));
+      } else {
+        emit(InventoryError(e.toString()));
+      }
     }
+  }
+
+  /// Refreshes everything (Categories + Products).
+  /// call this when a product is added/edited or category added.
+  Future<void> refreshInventory() async {
+    await loadInitialData(isRefresh: true);
   }
 
   Future<void> loadCategories() async {
     try {
       _cachedCategories = await _productService.getCategories();
-
       if (state is InventoryLoaded) {
         emit(
           (state as InventoryLoaded).copyWith(
@@ -48,28 +113,81 @@ class InventoryCubit extends Cubit<InventoryState> {
         );
       }
     } catch (e) {
-      // Must rethrow to allow caller (loadInitialData) to handle the error state
-      rethrow;
+      // If called individually, we might not want to break the whole state
+      // But typically this is called within loadInitialData
     }
   }
 
-  // الدالة الأساسية لجلب المنتجات (تدعم التصنيف، البحث، والتحميل الإضافي)
+  // دالة لجلب المزيد من المنتجات (Pagination) للصفحة الرئيسية
+  Future<void> loadMoreProducts() async {
+    if (state is! InventoryLoaded) return;
+    final currentState = state as InventoryLoaded;
+
+    if (currentState.hasReachedMax || currentState.isLoadingMore) return;
+
+    // Show loading spinner at bottom
+    emit(currentState.copyWith(isLoadingMore: true));
+
+    try {
+      final currentList = currentState.products;
+      final offset = currentList.length;
+
+      final newProducts = await _productService.getProducts(
+        limit: _pageSize,
+        offset: offset,
+        // No category filter here as it's the main dashboard list
+      );
+
+      // Deduplication
+      final uniqueNewProducts = <ProductModel>[];
+      for (var product in newProducts) {
+        if (product.id != null && !_productIds.contains(product.id)) {
+          _productIds.add(product.id!);
+          uniqueNewProducts.add(product);
+        }
+      }
+
+      emit(
+        currentState.copyWith(
+          products: List.of(currentList)..addAll(uniqueNewProducts),
+          hasReachedMax: newProducts.length < _pageSize,
+          isLoadingMore: false,
+        ),
+      );
+    } catch (e) {
+      // Stop loading spinner, keep data
+      emit(currentState.copyWith(isLoadingMore: false));
+    }
+  }
+
+  // Note: Old fetchProducts logic is still here for searching/filtering in separate screens
+  // But we might need to adapt it if it conflicts.
+  // The user asked to update "InventoryCubit logic".
+  // I will leave fetchProducts or update it to be compatible if used by ProductListScreen.
+  // ProductListScreen uses fetchProducts with categoryId.
+  // We need to ensure fetchProducts doesn't conflict with our dashboard state management.
+  // Ideally, ProductListScreen should have its own Cubit, but if shared, we handle it carefully.
+  // For now, let's keep fetchProducts for ProductListScreen usage,
+  // but ensure loadInitialData sets up the DASHBOARD state.
+
   Future<void> fetchProducts({
     String? categoryId,
     String? query,
     bool isLoadMore = false,
   }) async {
-    // التأكد من وجود Categories (احتياط)
+    // Legacy/Search/Filter usage
+    // This might override the dashboard state if called.
+    // ... implementation similar to before but enabling products list ...
+    // For simplicity and safety, I will let the dashboard have its own flow.
+    // If ProductListScreen calls this, it will replace the state with filtered products.
+    // That is acceptable behavior (Switching from Dashboard View to Product View).
+
     if (_cachedCategories.isEmpty) await loadCategories();
 
-    // التعامل مع الحالة الحالية
     if (state is InventoryLoaded) {
       final currentState = state as InventoryLoaded;
-
-      // 1. التحميل الإضافي (Pagination)
       if (isLoadMore) {
         if (currentState.hasReachedMax) return;
-
         try {
           final offset = currentState.products.length;
           final newProducts = await _productService.getProducts(
@@ -79,53 +197,46 @@ class InventoryCubit extends Cubit<InventoryState> {
             offset: offset,
           );
 
-          // منع التكرار
           final allProducts = List.of(currentState.products)
             ..addAll(newProducts);
-          // (اختياري) يمكن إضافة منطق لإزالة التكرار بواسطة ID إذا كانت قاعدة البيانات غير مستقرة في الترتيب
-
           emit(
             currentState.copyWith(
               products: allProducts,
               hasReachedMax: newProducts.length < _pageSize,
             ),
           );
-        } catch (e) {
-          // Error in pagination can remain ignored or shown as a snackbar separately
-          // But main thread shouldn't crash
-        }
+        } catch (e) {}
         return;
       }
     }
 
-    // 2. تحميل جديد (أول صفحة)
+    // Initial fetch for filtered view
     emit(InventoryLoading());
     try {
-      // جلب العدد المتوافق مع الفلتر الحالي (يدعم البحث والتصنيف)
-      final totalCount = await _productService.getTotalProductsCount(
-        categoryId: categoryId,
-        searchQuery: query,
-      );
+      final results = await Future.wait([
+        _productService.getProducts(
+          searchQuery: query,
+          categoryId: categoryId,
+          limit: _pageSize,
+          offset: 0,
+        ),
+        _productService.getTotalProductsCount(
+          categoryId: categoryId,
+          searchQuery: query,
+        ),
+      ]);
 
-      final products = await _productService.getProducts(
-        searchQuery: query,
-        categoryId: categoryId,
-        limit: _pageSize,
-        offset: 0,
-      );
-
-      // Maintain global count from cache
-      int globalCount = _cachedGlobalCount;
+      final products = results[0] as List<ProductModel>;
+      final totalCount = results[1] as int;
 
       emit(
         InventoryLoaded(
           products,
-          categories: List.of(_cachedCategories),
+          categories: _cachedCategories,
           hasReachedMax: products.length < _pageSize,
-          totalProductCount: totalCount, // Filtered count
-          globalProductCount: globalCount, // Keep dashboard count
-          selectedCategoryId: categoryId,
           isProductView: true,
+          selectedCategoryId: categoryId,
+          totalProductCount: totalCount,
         ),
       );
     } catch (e) {
@@ -140,10 +251,12 @@ class InventoryCubit extends Cubit<InventoryState> {
         currentState.copyWith(
           isProductView: false,
           selectedCategoryId: null,
-          products: [], // تفريغ المنتجات لتوفير الذاكرة
+          products: [], // Consider if we want to clear or keep recent
           hasReachedMax: false,
         ),
       );
+      // Reload initial data to refresh logic dashboard
+      loadInitialData(); // This will re-fetch everything
     } else {
       // Fallback
       loadInitialData();

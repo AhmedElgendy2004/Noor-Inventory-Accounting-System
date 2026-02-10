@@ -259,10 +259,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                   Row(
                                     children: [
                                       Text(
-                                        "شراء:  ",
+                                        "سعر الشراء:  ",
                                         style: TextStyle(
                                           color: Colors.brown.shade500,
-                                          fontSize: 16,
+                                          fontSize: 12,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -334,17 +334,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                       ),
                                     ],
                                   ),
-                                  Divider(
-                                    color: Colors.grey.shade300, // لون الخط
-                                    thickness: 1, // سُمك الخط
-                                    indent: 16, // مسافة فاضية من اليمين
-                                    endIndent: 16, // مسافة فاضية من اليسار
-                                  ),
+
                                   //  الكمية
                                   Align(
                                     alignment: AlignmentGeometry.bottomLeft,
-                                    child: Text(
-                                      ' الكمية:   ${product.stockQuantity}',
+                                    child: countProduct(
+                                      label: 'الكمية: ${product.stockQuantity}',
+                                      color:
+                                          product.stockQuantity <=
+                                              product.minStockLevel
+                                          ? Colors.red.shade100
+                                          : Colors.green.shade100,
+                                      textColor:
+                                          product.stockQuantity <=
+                                              product.minStockLevel
+                                          ? Colors.red.shade800
+                                          : Colors.green.shade800,
                                     ),
                                   ),
                                 ],
@@ -381,7 +386,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     );
                   } else if (state is InventoryError) {
                     return CustomErrorScreen(
-                      message: state.message,
                       onRetry: () {
                         final isSearching = _searchController.text.isNotEmpty;
                         final categoryId = isSearching
@@ -402,6 +406,30 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // -----------------------------Widgets-----------------------------
+
+  Widget countProduct({
+    required String label,
+    required Color color,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

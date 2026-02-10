@@ -1,3 +1,4 @@
+import 'package:al_noor_gallery/features/sales_history/logic/sales_history_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/utils/snackbar_utils.dart';
@@ -86,6 +87,8 @@ class _SalesScreenState extends State<SalesScreen> {
         } else if (state is SalesSuccess) {
           SnackBarUtils.showSuccess(context, 'تم حفظ الفاتورة بنجاح!');
           context.read<SalesCubit>().resetAfterSuccess();
+          // علشان نحدث شاشة الفواتير بعد البيع مباشرة
+          context.read<SalesHistoryCubit>().fetchInvoices(isRefresh: true);
         }
       },
       buildWhen: (prev, curr) => curr is SalesUpdated || curr is SalesLoading,

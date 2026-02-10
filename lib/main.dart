@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
 import 'data/services/product_service.dart';
-import 'data/services/sales_service.dart'; // Import SalesService
+import 'data/services/sales_service.dart';
 import 'features/inventory/logic/inventory_cubit.dart';
-import 'features/sales/logic/sales_cubit.dart'; // Import SalesCubit
-import 'features/sales_history/logic/sales_history_cubit.dart'; // Import SalesHistoryCubit
+import 'features/sales/logic/sales_cubit.dart';
+import 'features/sales_history/logic/sales_history_cubit.dart';
 import 'core/routes/app_router.dart';
 
 Future<void> main() async {
@@ -15,7 +14,7 @@ Future<void> main() async {
 
   // Load .env file
   await dotenv.load(fileName: ".env");
-
+// Initialize Supabase with environment variables
   await Supabase.initialize(
     url: dotenv.get('SUPABASE_URL'),
     anonKey: dotenv.get('SUPABASE_ANON_KEY'),
