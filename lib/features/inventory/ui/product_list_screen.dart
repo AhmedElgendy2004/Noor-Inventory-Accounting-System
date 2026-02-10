@@ -3,7 +3,7 @@ import 'package:al_noor_gallery/features/inventory/ui/widget/product_search_bar.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/widgets/custom_error_widget.dart';
+import '../../../core/widgets/custom_error_screen.dart';
 import '../../../core/utils/snackbar_utils.dart';
 import '../../../../data/models/product_model.dart';
 import '../../../../data/models/category_model.dart';

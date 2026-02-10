@@ -1,5 +1,5 @@
 import 'package:al_noor_gallery/core/utils/tap_effect.dart';
-import 'package:al_noor_gallery/core/widgets/custom_error_widget.dart';
+import 'package:al_noor_gallery/core/widgets/custom_error_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
