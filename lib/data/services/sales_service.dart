@@ -62,12 +62,45 @@ class SalesService {
   }
 
   /// جلب سجل الفواتير مع التفاصيل (العميل والمنتجات)
-  Future<List<SalesInvoiceModel>> getSalesInvoices() async {
+  /// يدعم التحميل التدريجي (Pagination) والفلترة بالتاريخ
+  Future<List<SalesInvoiceModel>> getSalesInvoices({
+    required int limit,
+    required int offset,
+    DateTime? filterDate,
+  }) async {
     try {
-      final response = await _supabase
+      var query = _supabase
           .from('sales_invoices')
-          .select('*, customers(name), sale_items(*, products(name))')
-          .order('created_at', ascending: false);
+          .select('*, customers(name), sale_items(*, products(name))');
+
+      // تطبيق فلتر التاريخ (يوم كامل من 00:00 إلى 23:59)
+      if (filterDate != null) {
+        final startOfDay = DateTime(
+          filterDate.year,
+          filterDate.month,
+          filterDate.day,
+          0,
+          0,
+          0,
+        );
+        final endOfDay = DateTime(
+          filterDate.year,
+          filterDate.month,
+          filterDate.day,
+          23,
+          59,
+          59,
+        );
+
+        query = query
+            .gte('created_at', startOfDay.toIso8601String())
+            .lte('created_at', endOfDay.toIso8601String());
+      }
+
+      // الترتيب وتطبيق Pagination
+      final response = await query
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1); // Supabase range is inclusive
 
       final data = response as List<dynamic>;
       return data.map((e) => SalesInvoiceModel.fromJson(e)).toList();

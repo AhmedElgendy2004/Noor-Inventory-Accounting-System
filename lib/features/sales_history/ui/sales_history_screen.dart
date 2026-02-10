@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../data/models/sales_invoice_model.dart';
 import '../../../../data/services/sales_service.dart';
 import '../logic/sales_history_cubit.dart';
+import '../logic/sales_history_state.dart';
 
 class SalesHistoryScreen extends StatelessWidget {
   const SalesHistoryScreen({super.key});
@@ -13,33 +14,159 @@ class SalesHistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => SalesHistoryCubit(SalesService())..loadInvoices(),
-      child: Scaffold(
-        appBar: AppBar(title: const Text("سجل الفواتير")),
-        body: BlocBuilder<SalesHistoryCubit, SalesHistoryState>(
-          builder: (context, state) {
-            if (state is SalesHistoryLoading) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (state is SalesHistoryError) {
-              return Center(child: Text("خطأ: ${state.message}"));
-            } else if (state is SalesHistoryLoaded) {
-              if (state.invoices.isEmpty) {
-                return const Center(child: Text("لا توجد فواتير سابقة"));
-              }
-              return SafeArea(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: state.invoices.length,
-                  itemBuilder: (context, index) {
-                    final invoice = state.invoices[index];
-                    return _InvoiceCard(invoice: invoice);
-                  },
-                ),
+      create: (context) => SalesHistoryCubit(SalesService())..fetchInvoices(),
+      child: const _SalesHistoryView(),
+    );
+  }
+}
+
+class _SalesHistoryView extends StatefulWidget {
+  const _SalesHistoryView();
+
+  @override
+  State<_SalesHistoryView> createState() => _SalesHistoryViewState();
+}
+
+class _SalesHistoryViewState extends State<_SalesHistoryView> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    // نطلب المزيد عندما نصل إلى 90% من القائمة
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.9) {
+      context.read<SalesHistoryCubit>().loadMore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("سجل الفواتير"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.date_range),
+            onPressed: () async {
+              final pickedDate = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2026, 2, 5),
+                lastDate: DateTime.now(),
               );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
+              if (pickedDate != null && context.mounted) {
+                context.read<SalesHistoryCubit>().setDateFilter(pickedDate);
+              }
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Filter Status Header
+          BlocBuilder<SalesHistoryCubit, SalesHistoryState>(
+            buildWhen: (previous, current) =>
+                current is SalesHistoryLoaded || current is SalesHistoryLoading,
+            builder: (context, state) {
+              if (state is SalesHistoryLoaded && state.filterDate != null) {
+                return Container(
+                  width: double.infinity,
+                  color: Colors.blue.shade50,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        "بحث في: ${DateFormat('yyyy/MM/dd').format(state.filterDate!)}",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton.icon(
+                        icon: const Icon(Icons.clear, size: 16),
+                        label: const Text("مسح الفلتر"),
+                        onPressed: () =>
+                            context.read<SalesHistoryCubit>().clearFilter(),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+
+          // Main List
+          Expanded(
+            child: BlocBuilder<SalesHistoryCubit, SalesHistoryState>(
+              builder: (context, state) {
+                if (state is SalesHistoryLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (state is SalesHistoryError) {
+                  return Center(child: Text("خطأ: ${state.message}"));
+                } else if (state is SalesHistoryLoaded) {
+                  if (state.invoices.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        "لا توجد فواتير",
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                      ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () async => context
+                        .read<SalesHistoryCubit>()
+                        .fetchInvoices(isRefresh: true),
+                    child: ListView.separated(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: state.isLoadingMore
+                          ? state.invoices.length + 1
+                          : state.invoices.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        // Loading Indicator at bottom
+                        if (index >= state.invoices.length) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(12),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          );
+                        }
+
+                        // Invoice Item
+                        final invoice = state.invoices[index];
+                        return _InvoiceCard(invoice: invoice);
+                      },
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
