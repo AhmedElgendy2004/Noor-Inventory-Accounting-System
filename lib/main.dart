@@ -7,6 +7,7 @@ import 'data/services/product_service.dart';
 import 'data/services/sales_service.dart'; // Import SalesService
 import 'features/inventory/logic/inventory_cubit.dart';
 import 'features/sales/logic/sales_cubit.dart'; // Import SalesCubit
+import 'features/sales_history/logic/sales_history_cubit.dart'; // Import SalesHistoryCubit
 import 'core/routes/app_router.dart';
 
 Future<void> main() async {
@@ -35,6 +36,10 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<SalesCubit>(
           create: (context) => SalesCubit(SalesService()),
+        ),
+        BlocProvider<SalesHistoryCubit>(
+          create: (context) =>
+              SalesHistoryCubit(SalesService())..fetchInvoices(),
         ),
       ],
       child: MaterialApp.router(

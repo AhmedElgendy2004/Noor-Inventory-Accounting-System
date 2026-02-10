@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../data/models/sales_invoice_model.dart';
-import '../../../../data/services/sales_service.dart';
 import '../logic/sales_history_cubit.dart';
 import '../logic/sales_history_state.dart';
 
@@ -14,10 +13,7 @@ class SalesHistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => SalesHistoryCubit(SalesService())..fetchInvoices(),
-      child: const _SalesHistoryView(),
-    );
+    return const _SalesHistoryView();
   }
 }
 
@@ -34,6 +30,8 @@ class _SalesHistoryViewState extends State<_SalesHistoryView> {
   @override
   void initState() {
     super.initState();
+    // Fetch data if not already loaded (Safe fetch)
+    context.read<SalesHistoryCubit>().fetchInvoices();
     _scrollController.addListener(_onScroll);
   }
 
