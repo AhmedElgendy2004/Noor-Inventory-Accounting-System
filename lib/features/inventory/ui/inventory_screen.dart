@@ -1,7 +1,6 @@
 import 'package:al_noor_gallery/core/constants/constants.dart';
 import 'package:al_noor_gallery/features/inventory/ui/widget/custom_floating_action_button.dart';
 import 'package:al_noor_gallery/features/inventory/ui/widget/product_search_bar.dart';
-import 'package:al_noor_gallery/features/inventory/ui/widget/product_card.dart'; // Import ProductCard
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';

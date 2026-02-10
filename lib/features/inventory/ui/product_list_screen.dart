@@ -1,3 +1,4 @@
+import 'package:al_noor_gallery/core/widgets/action_icon_button.dart';
 import 'package:al_noor_gallery/features/inventory/ui/widget/custom_floating_action_button.dart';
 import 'package:al_noor_gallery/features/inventory/ui/widget/product_search_bar.dart';
 import 'package:flutter/material.dart';
@@ -248,7 +249,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('الباركود: ${product.barcode}'),
+                                  Text('الباركود:  ${product.barcode}'),
                                   Divider(
                                     color: Colors.grey.shade300, // لون الخط
                                     thickness: 1, // سُمك الخط
@@ -288,7 +289,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                         style: TextStyle(
                                           color: Colors.green.shade700,
 
-                                          fontSize: 18,
+                                          fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -315,7 +316,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                         style: TextStyle(
                                           color: Colors.orange.shade900,
 
-                                          fontSize: 16,
+                                          fontSize: 14,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -357,25 +358,21 @@ class _ProductListScreenState extends State<ProductListScreen> {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.edit,
-                                      color: Colors.blue,
-                                    ),
-                                    onPressed: () async {
-                                      // الانتقال لصفحة التعديل مع تمرير المنتج
+                                  ActionIconButton(
+                                    icon: Icons.edit,
+                                    backgroundColor: Colors.blue.shade300,
+                                    onTap: () async {
                                       context.push(
                                         '/edit-product',
                                         extra: product,
                                       );
                                     },
                                   ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
-                                    ),
-                                    onPressed: () => _deleteProduct(product),
+                                  SizedBox(width: 8),
+                                  ActionIconButton(
+                                    icon: Icons.delete,
+                                    backgroundColor: Colors.red.shade300,
+                                    onTap: () => _deleteProduct(product),
                                   ),
                                 ],
                               ),

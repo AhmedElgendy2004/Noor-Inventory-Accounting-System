@@ -11,7 +11,7 @@ class HomeScreen extends StatelessWidget {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 120.0,
+            expandedHeight: 125.0,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
@@ -76,26 +76,23 @@ class HomeScreen extends StatelessWidget {
                   onTap: () => context.push('/inventory'),
                 ),
 
-                // 3. Sales Invoices History
+                // 3. Purchases (Placeholder)
+                DashboardCard(
+                  title: 'شراء\n(قريباً)',
+                  icon: Icons.shopping_cart,
+                  color: Colors.redAccent,
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('قريباً: إدارة الشراء')),
+                    );
+                  },
+                ),
+                // 4. Sales Invoices History
                 DashboardCard(
                   title: 'فواتير البيع',
                   icon: Icons.receipt_long, // or description
                   color: Colors.teal,
                   onTap: () => context.push('/sales-history'),
-                ),
-
-                // 4. Purchase Invoices (Placeholder)
-                DashboardCard(
-                  title: 'فواتير الشراء \n(قريباً)',
-                  icon: Icons.receipt_long,
-                  color: Colors.purple,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('قريباً: إدارة فواتير الشراء'),
-                      ),
-                    );
-                  },
                 ),
 
                 // 5. Accounts (Placeholder)
@@ -109,14 +106,16 @@ class HomeScreen extends StatelessWidget {
                     );
                   },
                 ),
-                // 6. Purchases (Placeholder)
+                // 6. Purchase Invoices (Placeholder)
                 DashboardCard(
-                  title: 'شراء\n(قريباً)',
-                  icon: Icons.shopping_cart,
-                  color: Colors.redAccent,
+                  title: 'فواتير الشراء \n(قريباً)',
+                  icon: Icons.receipt_long,
+                  color: Colors.purple,
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('قريباً: إدارة الشراء')),
+                      const SnackBar(
+                        content: Text('قريباً: إدارة فواتير الشراء'),
+                      ),
                     );
                   },
                 ),

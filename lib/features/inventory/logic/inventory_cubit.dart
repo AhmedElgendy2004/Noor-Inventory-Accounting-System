@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/models/category_model.dart';
@@ -205,7 +206,17 @@ class InventoryCubit extends Cubit<InventoryState> {
               hasReachedMax: newProducts.length < _pageSize,
             ),
           );
-        } catch (e) {}
+        } catch (e) {
+          // 1. نوقف لودنج الـ Pagination عشان الـ Spinner اللي تحت يختفي
+          emit(currentState.copyWith(isLoadingMore: false));
+
+          // 2. (اختياري) ممكن تطبع الخطأ في الـ Console للمتابعة أثناء البرمجة
+          debugPrint('Error loading more products: $e');
+
+          // 3. (احترافي) إرسال إشعار للمستخدم بدون تغيير حالة الشاشة
+          // بما إن الكيوبيت ملوش واجهة، بنكتفي بإيقاف اللودنج
+          // والـ UI هيفهم إن مفيش بيانات جديدة جت.
+        }
         return;
       }
     }
@@ -237,6 +248,8 @@ class InventoryCubit extends Cubit<InventoryState> {
           isProductView: true,
           selectedCategoryId: categoryId,
           totalProductCount: totalCount,
+          globalProductCount:
+              _cachedGlobalCount, // Ensure global count is preserved
         ),
       );
     } catch (e) {
