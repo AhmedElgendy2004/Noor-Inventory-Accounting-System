@@ -1,6 +1,7 @@
 import 'package:al_noor_gallery/core/constants/constants.dart';
 import 'package:al_noor_gallery/features/inventory/ui/widget/custom_floating_action_button.dart';
 import 'package:al_noor_gallery/features/inventory/ui/widget/product_search_bar.dart';
+import 'package:al_noor_gallery/features/inventory/ui/widget/alert_product_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -277,45 +278,92 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         slivers: [
-                          // بطاقة إجمالي المنتجات
-                          SliverToBoxAdapter(child: totalItemsCountCard(state)),
-                         //التصنيفات
-                          const SliverToBoxAdapter(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              child: Text(
-                                "التصنيفات",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                          if (!state.isLowStockView) ...[
+                            // بطاقة إجمالي المنتجات
+                            SliverToBoxAdapter(
+                              child: totalItemsCountCard(state),
+                            ),
+                            // بطاقة النواقص
+                            SliverToBoxAdapter(
+                              child: _buildLowStockSummary(state),
+                            ),
+
+                            //التصنيفات
+                            const SliverToBoxAdapter(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: Text(
+                                  "التصنيفات",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          SliverPadding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            sliver: categoryGrid(state),
-                          ),
-                          SliverToBoxAdapter(
-                            child: Padding(
+                            SliverPadding(
                               padding: const EdgeInsets.symmetric(
-                                vertical: 16,
                                 horizontal: 16,
                               ),
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: () =>
-                                      _showAddCategoryDialog(context),
-                                  icon: const Icon(Icons.add_circle_outline),
-                                  label: const Text('إضافة تصنيف جديد'),
+                              sliver: categoryGrid(state),
+                            ),
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                  horizontal: 16,
+                                ),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () =>
+                                        _showAddCategoryDialog(context),
+                                    icon: const Icon(Icons.add_circle_outline),
+                                    label: const Text('إضافة تصنيف جديد'),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                          ] else ...[
+                            // List of low stock products
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.arrow_back),
+                                      onPressed: () => context
+                                          .read<InventoryCubit>()
+                                          .loadInitialData(),
+                                    ),
+                                    Text(
+                                      "تنبيه النواقص (${state.lowStockCount})",
+                                      style: TextStyle(
+                                        color: Colors.red.shade800,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            SliverList(
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
+                                if (index >= state.products.length) return null;
+                                return AlertProductCard(
+                                  product: state.products[index],
+                                );
+                              }, childCount: state.products.length),
+                            ),
+                          ],
 
                           if (state.isLoadingMore)
                             const SliverToBoxAdapter(
@@ -344,6 +392,56 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   //-------------------- Widgets -------------------//
+
+  Widget _buildLowStockSummary(InventoryLoaded state) {
+    if (state.lowStockCount <= 0) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: () {
+        context.read<InventoryCubit>().fetchLowStockProducts();
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.red.shade700,
+              size: 30,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'تنبيه النواقص',
+                    style: TextStyle(
+                      color: Colors.red.shade900,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'لديك ${state.lowStockCount} منتجات قاربت على النفاد',
+                    style: TextStyle(color: Colors.red.shade700),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, color: Colors.red.shade300, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget totalItemsCountCard(InventoryLoaded state) {
     return Container(

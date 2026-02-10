@@ -33,24 +33,26 @@ class InventoryCubit extends Cubit<InventoryState> {
     }
 
     try {
-      // 2. Fetch Global Count & Categories (Parallel often better, but sequential is safer for dependencies)
-      // We will do them concurrently for speed
+      // 2. Fetch Global Count & Categories
       final results = await Future.wait([
         _productService.getCategories(),
         _productService.getTotalProductsCount(),
-        // Fetch first page of products for the dashboard list
         _productService.getProducts(limit: _pageSize, offset: 0),
+        // Fetch low stock count
+        _productService.getTotalProductsCount(lowStockOnly: true),
       ]);
 
       final categories = results[0] as List<CategoryModel>;
       final globalCount = results[1] as int;
       final recentProducts = results[2] as List<ProductModel>;
+      final lowStockCount = results[3] as int;
 
       // Update local caches
       _cachedCategories = categories;
       _cachedGlobalCount = globalCount;
 
-      // Reset product cache since we are pulling fresh first page
+      // ... existing deduplication logic ...
+
       if (isRefresh || !hasData) {
         _productIds.clear();
       }
@@ -64,21 +66,16 @@ class InventoryCubit extends Cubit<InventoryState> {
         }
       }
 
-      // If we are refreshing but want to keep old products that aren't in the new page
-      // (Advanced: usually for pull-to-refresh we replace the list, so let's replace for consistency)
-      // But user asked for "Silent Refresh" logic where we merge?
-      // Usually for "Initial Data" which is top-level dashboard, replacing the top 15 is standard.
-      // If we were scrolling, we append.
-
       emit(
         InventoryLoaded(
-          uniqueProducts, // Show recent products
+          uniqueProducts,
           categories: _cachedCategories,
-          totalProductCount: globalCount, // For dashboard, total is global
+          totalProductCount: globalCount,
           globalProductCount: _cachedGlobalCount,
+          lowStockCount: lowStockCount, // Added
           hasReachedMax: recentProducts.length < _pageSize,
           isLoadingMore: false,
-          isProductView: false, // Default dashboard view
+          isProductView: false,
         ),
       );
     } catch (e) {
@@ -101,6 +98,39 @@ class InventoryCubit extends Cubit<InventoryState> {
   /// call this when a product is added/edited or category added.
   Future<void> refreshInventory() async {
     await loadInitialData(isRefresh: true);
+  }
+
+  /// Fetches products that are low on stock
+  Future<void> fetchLowStockProducts() async {
+    emit(InventoryLoading());
+    try {
+      // Forced Refresh: Ignore cache, fetch fresh from DB
+      final products = await _productService.getProducts(
+        limit: _pageSize,
+        offset: 0,
+        lowStockOnly: true,
+      );
+
+      // Update low stock count as well to be accurate
+      final count = await _productService.getTotalProductsCount(
+        lowStockOnly: true,
+      );
+
+      emit(
+        InventoryLoaded(
+          products,
+          categories: _cachedCategories,
+          hasReachedMax: products.length < _pageSize,
+          totalProductCount: count,
+          globalProductCount: _cachedGlobalCount,
+          lowStockCount: count,
+          isProductView: true,
+          isLowStockView: true,
+        ),
+      );
+    } catch (e) {
+      emit(InventoryError(e.toString()));
+    }
   }
 
   Future<void> loadCategories() async {
@@ -136,7 +166,8 @@ class InventoryCubit extends Cubit<InventoryState> {
       final newProducts = await _productService.getProducts(
         limit: _pageSize,
         offset: offset,
-        // No category filter here as it's the main dashboard list
+        lowStockOnly:
+            currentState.isLowStockView, // Support pagination for low stock
       );
 
       // Deduplication

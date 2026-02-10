@@ -20,9 +20,10 @@ class InventoryLoaded extends InventoryState {
   final bool isLoadingMore; // Indicator for pagination loading
   final int totalProductCount;
   final int globalProductCount;
+  final int lowStockCount; // New field for summary
   final String? selectedCategoryId;
-  final bool
-  isProductView; // Can be kept for legacy or view switching if needed
+  final bool isProductView;
+  final bool isLowStockView; // New flag
 
   const InventoryLoaded(
     this.products, {
@@ -31,8 +32,10 @@ class InventoryLoaded extends InventoryState {
     this.isLoadingMore = false,
     this.totalProductCount = 0,
     this.globalProductCount = 0,
+    this.lowStockCount = 0,
     this.selectedCategoryId,
     this.isProductView = false,
+    this.isLowStockView = false,
   });
 
   InventoryLoaded copyWith({
@@ -42,8 +45,10 @@ class InventoryLoaded extends InventoryState {
     bool? isLoadingMore,
     int? totalProductCount,
     int? globalProductCount,
+    int? lowStockCount,
     String? selectedCategoryId,
     bool? isProductView,
+    bool? isLowStockView,
   }) {
     return InventoryLoaded(
       products ?? this.products,
@@ -52,8 +57,10 @@ class InventoryLoaded extends InventoryState {
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       totalProductCount: totalProductCount ?? this.totalProductCount,
       globalProductCount: globalProductCount ?? this.globalProductCount,
+      lowStockCount: lowStockCount ?? this.lowStockCount,
       selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
       isProductView: isProductView ?? this.isProductView,
+      isLowStockView: isLowStockView ?? this.isLowStockView,
     );
   }
 
@@ -63,6 +70,12 @@ class InventoryLoaded extends InventoryState {
     categories,
     hasReachedMax,
     isLoadingMore,
+    totalProductCount,
+    globalProductCount,
+    lowStockCount,
+    isLowStockView,
+    selectedCategoryId,
+    isProductView,
   ];
 }
 
