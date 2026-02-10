@@ -11,7 +11,7 @@ class SalesInvoiceDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("تفاصيل الفاتورة \n${invoice.invoiceNumber ?? ''}"),
+        title: Text("تفاصيل الفاتورة رقم / \n${invoice.invoiceNumber ?? ''}"),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -37,8 +37,8 @@ class SalesInvoiceDetailScreen extends StatelessWidget {
         child: Column(
           children: [
             _row(
-              "التاريخ",
-              DateFormat('yyyy/MM/dd hh:mm a').format(invoice.date),
+              "التاريخ / الوقت",
+              DateFormat('yyyy/MM/dd   hh:mm  a').format(invoice.date),
             ),
             const Divider(),
             _row("العميل", invoice.customerName ?? "زبون عام"),
@@ -99,8 +99,12 @@ class SalesInvoiceDetailScreen extends StatelessWidget {
                 ),
                 subtitle: Text(" ${item.priceAtSale}  ${item.quantity}x  ج.م"),
                 trailing: Text(
-                  "${(item.quantity * item.priceAtSale).toStringAsFixed(1)} ج.م",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  "${(item.quantity * item.priceAtSale).toStringAsFixed(1)}  ج.م",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: invoice.isWholesale ? Colors.purple : Colors.blue,
+                    fontSize: 14,
+                  ),
                 ),
               );
             },

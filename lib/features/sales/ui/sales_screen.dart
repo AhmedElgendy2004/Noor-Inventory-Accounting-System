@@ -17,7 +17,6 @@ class SalesScreen extends StatefulWidget {
 
 class _SalesScreenState extends State<SalesScreen> {
   // Scanner or Search Controller hooks would go here
-  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {

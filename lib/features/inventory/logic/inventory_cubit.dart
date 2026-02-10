@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/services/product_service.dart';

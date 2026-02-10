@@ -11,7 +11,7 @@ class HomeScreen extends StatelessWidget {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 150.0,
+            expandedHeight: 120.0,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
@@ -33,18 +33,18 @@ class HomeScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text(
-                          'النور',
+                          'النور  ',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 35, // كبرنا الخط شوية عشان يبقى واضح
+                            fontSize: 35,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const Text(
-                          'الشيخ محمود قطب',
+                          'للشيخ محمود قطب',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 15, // كبرنا الخط شوية عشان يبقى واضح
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
