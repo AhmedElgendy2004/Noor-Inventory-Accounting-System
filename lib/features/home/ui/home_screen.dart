@@ -57,8 +57,8 @@ class HomeScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16.0),
             sliver: SliverGrid.count(
               crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+              crossAxisSpacing: 20,
+              mainAxisSpacing: 20,
               children: [
                 // 1. Point of Sale
                 DashboardCard(
@@ -87,15 +87,7 @@ class HomeScreen extends StatelessWidget {
                     );
                   },
                 ),
-                // 4. Sales Invoices History
-                DashboardCard(
-                  title: 'فواتير البيع',
-                  icon: Icons.receipt_long, // or description
-                  color: Colors.teal,
-                  onTap: () => context.push('/sales-history'),
-                ),
-
-                // 5. Accounts (Placeholder)
+                // 4. Accounts (Placeholder)
                 DashboardCard(
                   title: 'الحسابات\n(قريباً)',
                   icon: Icons.calculate,
@@ -106,6 +98,14 @@ class HomeScreen extends StatelessWidget {
                     );
                   },
                 ),
+                // 5. Sales Invoices History
+                DashboardCard(
+                  title: 'فواتير البيع',
+                  icon: Icons.receipt_long, // or description
+                  color: Colors.teal,
+                  onTap: () => context.push('/sales-history'),
+                ),
+
                 // 6. Purchase Invoices (Placeholder)
                 DashboardCard(
                   title: 'فواتير الشراء \n(قريباً)',
