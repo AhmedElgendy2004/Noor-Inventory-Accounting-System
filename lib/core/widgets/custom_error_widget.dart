@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-class CustomErrorWidget extends StatelessWidget {
+class CustomErrorScreen extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const CustomErrorWidget({
+  const CustomErrorScreen({
     super.key,
     required this.message,
     required this.onRetry,
@@ -32,7 +32,7 @@ class CustomErrorWidget extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              'حدث خطأ في الاتصال بالانترنت ',
+              'لا يوجد اتصال بالانترنت',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,

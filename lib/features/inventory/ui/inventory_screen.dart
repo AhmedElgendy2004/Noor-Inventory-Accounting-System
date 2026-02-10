@@ -265,7 +265,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     return _buildCategoryGrid(state);
                   }
                   if (state is InventoryError) {
-                    return CustomErrorWidget(
+                    return CustomErrorScreen(
                       message: "",
                       onRetry: () =>
                           context.read<InventoryCubit>().loadInitialData(),

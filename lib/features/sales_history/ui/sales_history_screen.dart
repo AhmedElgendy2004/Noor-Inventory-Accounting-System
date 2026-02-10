@@ -1,4 +1,5 @@
 import 'package:al_noor_gallery/core/utils/tap_effect.dart';
+import 'package:al_noor_gallery/core/widgets/custom_error_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -118,7 +119,12 @@ class _SalesHistoryViewState extends State<_SalesHistoryView> {
                 if (state is SalesHistoryLoading) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (state is SalesHistoryError) {
-                  return Center(child: Text("خطأ: ${state.message}"));
+                  return CustomErrorScreen(
+                    message: "",
+                    onRetry: () => context
+                        .read<SalesHistoryCubit>()
+                        .fetchInvoices(isRefresh: true),
+                  );
                 } else if (state is SalesHistoryLoaded) {
                   if (state.invoices.isEmpty) {
                     return const Center(

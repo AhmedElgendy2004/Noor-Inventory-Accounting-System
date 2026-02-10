@@ -380,7 +380,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       ),
                     );
                   } else if (state is InventoryError) {
-                    return CustomErrorWidget(
+                    return CustomErrorScreen(
                       message: state.message,
                       onRetry: () {
                         final isSearching = _searchController.text.isNotEmpty;
