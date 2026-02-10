@@ -277,7 +277,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         slivers: [
+                          // بطاقة إجمالي المنتجات
                           SliverToBoxAdapter(child: totalItemsCountCard(state)),
+                         //التصنيفات
                           const SliverToBoxAdapter(
                             child: Padding(
                               padding: EdgeInsets.symmetric(

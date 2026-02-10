@@ -10,6 +10,7 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
+          //AppBar
           SliverAppBar(
             expandedHeight: 125.0,
             pinned: true,
@@ -53,6 +54,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
+          // Dashboard Grid
           SliverPadding(
             padding: const EdgeInsets.all(16.0),
             sliver: SliverGrid.count(
