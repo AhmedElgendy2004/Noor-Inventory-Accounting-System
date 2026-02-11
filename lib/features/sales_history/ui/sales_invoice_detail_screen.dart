@@ -71,6 +71,29 @@ class SalesInvoiceDetailScreen extends StatelessWidget {
     );
   }
 
+
+  Widget _row(String label, String value, {bool isBold = false, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 16 : 14,
+              color: color ?? Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
   Widget _buildItemsList() {
     return Card(
       child: Column(
@@ -114,23 +137,9 @@ class SalesInvoiceDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _row(String label, String value, {bool isBold = false, Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              fontSize: isBold ? 16 : 14,
-              color: color ?? Colors.black,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
+
+
 }
+
+
