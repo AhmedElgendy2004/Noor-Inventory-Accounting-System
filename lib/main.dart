@@ -7,6 +7,8 @@ import 'data/services/sales_service.dart';
 import 'features/inventory/logic/inventory_cubit.dart';
 import 'features/sales/logic/sales_cubit.dart';
 import 'features/sales_history/logic/sales_history_cubit.dart';
+import 'features/auth/logic/auth_cubit.dart';
+import 'features/auth/data/services/auth_service.dart';
 import 'core/routes/app_router.dart';
 
 Future<void> main() async {
@@ -14,7 +16,7 @@ Future<void> main() async {
 
   // Load .env file
   await dotenv.load(fileName: ".env");
-// Initialize Supabase with environment variables
+  // Initialize Supabase with environment variables
   await Supabase.initialize(
     url: dotenv.get('SUPABASE_URL'),
     anonKey: dotenv.get('SUPABASE_ANON_KEY'),
@@ -23,26 +25,52 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final AuthService _authService;
+  late final AuthCubit _authCubit;
+  late final ProductService _productService;
+  late final SalesService _salesService;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = AuthService();
+    _authCubit = AuthCubit(_authService)..checkAuthStatus();
+    _productService = ProductService();
+    _salesService = SalesService();
+  }
+
+  @override
+  void dispose() {
+    _authCubit.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        BlocProvider<AuthCubit>.value(value: _authCubit),
         BlocProvider<InventoryCubit>(
-          create: (context) => InventoryCubit(ProductService()),
+          create: (context) => InventoryCubit(_productService),
         ),
         BlocProvider<SalesCubit>(
-          create: (context) => SalesCubit(SalesService()),
+          create: (context) => SalesCubit(_salesService),
         ),
         BlocProvider<SalesHistoryCubit>(
           create: (context) =>
-              SalesHistoryCubit(SalesService())..fetchInvoices(),
+              SalesHistoryCubit(_salesService)..fetchInvoices(),
         ),
       ],
       child: MaterialApp.router(
-        routerConfig: AppRouter.router,
+        routerConfig: AppRouter.createRouter(_authCubit),
         debugShowCheckedModeBanner: false,
         title: 'Al Noor Gallery POS',
         theme: ThemeData(
