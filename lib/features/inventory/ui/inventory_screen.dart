@@ -1,6 +1,8 @@
 import 'package:al_noor_gallery/core/constants/constants.dart';
+import 'package:al_noor_gallery/data/models/product_model.dart';
 import 'package:al_noor_gallery/features/inventory/ui/widget/custom_floating_action_button.dart';
 import 'package:al_noor_gallery/features/inventory/ui/widget/product_search_bar.dart';
+import 'package:al_noor_gallery/features/inventory/ui/widget/product_list_card.dart';
 import 'package:al_noor_gallery/features/inventory/ui/widget/alert_product_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -99,6 +101,43 @@ class _InventoryScreenState extends State<InventoryScreen> {
       context.read<InventoryCubit>().deleteCategory(category.id!);
       context.read<InventoryCubit>().loadCategories();
       SnackBarUtils.showSuccess(context, 'تم حذف التصنيف بنجاح');
+    }
+  }
+
+  Future<void> _deleteProduct(ProductModel product) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف المنتج'),
+        content: Text('هل أنت متأكد من حذف منتج "${product.name}"؟'),
+        actions: [
+          TextButton(
+            onPressed: () => context.pop(false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => context.pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted && product.id != null) {
+      context.read<InventoryCubit>().deleteProduct(product.id!);
+      // إعادة تحميل البيانات بعد الحذف (البحث أو القائمة)
+      // إذا كنا في وضع البحث، سيعاد تحميل البحث أوتوماتيكياً إذا كان الكيوبيت يدعم ذلك،
+      // ولكن هنا الكيوبيت يحتاج لتحديث القائمة. deleteProduct في الكيوبيت عادة لا تعيد التحميل تلقائياً للقائمة المحلية؟
+      // سنقوم باستدعاء loadInitialData أو تحديث البحث.
+      // الأفضل: إعادة تنفيذ البحث الحالي.
+      final searchTerm = _searchController.text;
+      if (searchTerm.isNotEmpty) {
+        context.read<InventoryCubit>().searchProducts(searchTerm);
+      } else {
+        context.read<InventoryCubit>().loadInitialData();
+      }
+      SnackBarUtils.showSuccess(context, 'تم حذف المنتج بنجاح');
     }
   }
 
@@ -248,13 +287,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: ProductSearchBar(
                   controller: _searchController,
-                  onChanged: (val) {},
-                  onSubmitted: (val) {
-                    context.push('/products/all?focus=true');
+                  onChanged: (val) {
+                    context.read<InventoryCubit>().searchProducts(val);
                   },
-                  readOnly: true,
-                  onTap: () {
-                    context.push('/products/all?focus=true');
+                  onSubmitted: (val) {
+                    // إغلاق الكيبورد فقط لأن البحث يتم تلقائياً
+                    FocusScope.of(context).unfocus();
                   },
                 ),
               ),
@@ -262,7 +300,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 child: BlocConsumer<InventoryCubit, InventoryState>(
                   listener: (context, state) {
                     if (state is InventoryError) {
-                      SnackBarUtils.showError(context, "حدث خطا اثناء التحميل");
+                      SnackBarUtils.showError(context, state.message);
                     }
                   },
                   builder: (context, state) {
@@ -278,7 +316,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         slivers: [
-                          if (!state.isLowStockView) ...[
+                          if (!state.isLowStockView && !state.isSearching) ...[
                             // بطاقة إجمالي المنتجات
                             SliverToBoxAdapter(
                               child: totalItemsCountCard(state),
@@ -328,7 +366,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               ),
                             ),
                           ] else ...[
-                            // List of low stock products
+                            // List of low stock products OR Search Results
                             SliverToBoxAdapter(
                               child: Padding(
                                 padding: const EdgeInsets.all(16.0),
@@ -341,9 +379,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                           .loadInitialData(),
                                     ),
                                     Text(
-                                      "تنبيه النواقص (${state.lowStockCount})",
+                                      state.isSearching
+                                          ? "نتائج البحث"
+                                          : "تنبيه النواقص (${state.lowStockCount})",
                                       style: TextStyle(
-                                        color: Colors.red.shade800,
+                                        color: state.isSearching
+                                            ? Colors.black87
+                                            : Colors.red.shade800,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 20,
                                       ),
@@ -358,9 +400,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                 index,
                               ) {
                                 if (index >= state.products.length) return null;
-                                return AlertProductCard(
-                                  product: state.products[index],
-                                );
+                                final product = state.products[index];
+
+                                if (state.isSearching) {
+                                  return ProductListCard(
+                                    product: product,
+                                    onEdit: () => context.push(
+                                      '/edit-product',
+                                      extra: product,
+                                    ),
+                                    onDelete: () => _deleteProduct(product),
+                                    // عرض فقط عند النقر على البطاقة نفسها
+                                    onTap: () {
+                                      // يمكن هنا عرض تفاصيل المنتج في نافذة أو شاشة للقراءة فقط
+                                    },
+                                  );
+                                }
+                                return AlertProductCard(product: product);
                               }, childCount: state.products.length),
                             ),
                           ],

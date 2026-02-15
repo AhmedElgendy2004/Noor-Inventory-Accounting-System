@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/models/cart_item_model.dart';
 import '../../../data/models/customer_model.dart';
@@ -210,7 +209,7 @@ class SalesCubit extends Cubit<SalesState> {
       emit(SalesSuccess(invId));
     } catch (e) {
       // طباعة الخطأ في الكونسول للمطور
-      debugPrint("❌ Sales Transaction Failed: $e");
+     // debugPrint("❌ Sales Transaction Failed: $e");
 
       // استخراج رسالة خطأ مفهومة إذا أمكن
       String errorMessage = "فشل تنفيذ البيع";

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'core/network/network_info.dart';
 import 'data/services/product_service.dart';
 import 'data/services/sales_service.dart';
 import 'features/inventory/logic/inventory_cubit.dart';
@@ -42,7 +44,8 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _authService = AuthService();
-    _authCubit = AuthCubit(_authService)..checkAuthStatus();
+    final networkInfo = NetworkInfo(Connectivity());
+    _authCubit = AuthCubit(_authService, networkInfo)..checkAuthStatus();
     _productService = ProductService();
     _salesService = SalesService();
   }

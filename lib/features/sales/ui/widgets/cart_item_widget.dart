@@ -52,14 +52,27 @@ class CartItemWidget extends StatelessWidget {
               children: [
                 // Product Price
                 Expanded(
-                  child: Text(
-                    '${item.priceAtSale} ج.م  (${item.priceType == 'wholesale' ? 'جملة' : 'قطاعي'})',
-                    style: TextStyle(
-                      color: item.priceType == 'wholesale'
-                          ? Colors.orange
-                          : Colors.grey[700],
-                      fontSize: 14,
-                    ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '${item.priceAtSale % 1 == 0 ? item.priceAtSale.toInt() : item.priceAtSale} ج.م',
+                        style: TextStyle(
+                          color: item.priceType == 'wholesale'
+                              ? Colors.orange
+                              : Colors.grey[700],
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        '(${item.priceType == 'wholesale' ? 'جملة' : 'قطاعي'})',
+                        style: TextStyle(
+                          color: item.priceType == 'wholesale'
+                              ? Colors.orange
+                              : Colors.grey[700],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -95,7 +108,7 @@ class CartItemWidget extends StatelessWidget {
                 SizedBox(
                   width: 70,
                   child: Text(
-                    '${item.total}\nج.م',
+                    '${item.total % 1 == 0 ? item.total.toInt() : item.total} ج.م',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,

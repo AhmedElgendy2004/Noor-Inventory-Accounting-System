@@ -101,9 +101,7 @@ class _SalesHistoryViewState extends State<_SalesHistoryView> {
                   return const Center(child: CircularProgressIndicator());
                 } else if (state is SalesHistoryError) {
                   return CustomErrorScreen(
-                    onRetry: () => context
-                        .read<SalesHistoryCubit>()
-                        .fetchInvoices(isRefresh: true),
+                    onRetry: () => context.read<SalesHistoryCubit>().fetchInvoices(isRefresh: true),
                   );
                 } else if (state is SalesHistoryLoaded) {
                   if (state.invoices.isEmpty) {

@@ -1,3 +1,4 @@
+import 'package:al_noor_gallery/core/utils/my_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final _formKey = GlobalKey<FormState>();
   bool _isLoginMode = true; // Toggle between Login and Register
+  bool _isPasswordHidden = true;
 
   @override
   void dispose() {
@@ -75,15 +77,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo or Title
-                  const Icon(
-                    Icons.storefront,
-                    size: 80,
-                    color: Colors.blueAccent,
-                  ),
+                  Image.asset(
+                    "assets/image/logo.png",
+                    height: 100,
+                  ), // Replace with your logo
                   const SizedBox(height: 16),
                   const Text(
-                    'معرض النور',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    ' AL NOOR POS',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -149,11 +150,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Password Field
                   TextFormField(
                     controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
+                    obscureText: _isPasswordHidden,
+                    decoration: InputDecoration(
                       labelText: 'كلمة المرور',
-                      prefixIcon: Icon(Icons.lock),
-                      border: OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.lock),
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isPasswordHidden
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordHidden = !_isPasswordHidden;
+                          });
+                        },
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.length < 6) {
@@ -162,6 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
+
                   const SizedBox(height: 24),
 
                   // Submit Button
@@ -207,6 +221,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           : 'لديك حساب بالفعل؟ تسجيل الدخول',
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  const MyCard(),
                 ],
               ),
             ),
@@ -221,7 +237,11 @@ class _LoginScreenState extends State<LoginScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('الحساب غير مفعل'),
+        title: Center(
+          child: const Text(
+            'الحساب غير مفعل\n برجاء الاتصال علي   \n 01027772838 \n لتفعيل الحساب',
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

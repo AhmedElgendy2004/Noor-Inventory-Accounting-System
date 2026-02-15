@@ -11,7 +11,7 @@ class InvoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('yyyy/MM/dd hh:mm a');
+    final dateFormat = DateFormat('yyyy/MM/dd   hh:mm  a');
     final isCash = invoice.paymentType == PaymentType.cash;
     final isWholesale = invoice.isWholesale;
 

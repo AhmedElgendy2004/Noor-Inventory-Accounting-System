@@ -1,6 +1,6 @@
-import 'package:al_noor_gallery/core/widgets/action_icon_button.dart';
 import 'package:al_noor_gallery/features/inventory/ui/widget/custom_floating_action_button.dart';
 import 'package:al_noor_gallery/features/inventory/ui/widget/product_search_bar.dart';
+import 'package:al_noor_gallery/features/inventory/ui/widget/product_list_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -233,150 +233,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
                             );
                           }
                           final product = products[index];
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            child: ListTile(
-                              //name
-                              title: Text(
-                                product.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('الباركود:  ${product.barcode}'),
-                                  Divider(
-                                    color: Colors.grey.shade300, // لون الخط
-                                    thickness: 1, // سُمك الخط
-                                    indent: 16, // مسافة فاضية من اليمين
-                                    endIndent: 16, // مسافة فاضية من اليسار
-                                  ),
-                                  //سعر الشراء
-                                  Row(
-                                    children: [
-                                      Text(
-                                        "سعر الشراء:  ",
-                                        style: TextStyle(
-                                          color: Colors.brown.shade500,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        product.purchasePrice % 1 == 0
-                                            ? product.purchasePrice
-                                                  .toInt()
-                                                  .toString() // لو صحيح يظهر بدون كسور
-                                            : product.purchasePrice.toString(),
-                                        style: TextStyle(
-                                          color: Colors.brown.shade500,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  //  سعر البيع قطاعي
-                                  Row(
-                                    children: [
-                                      Text(
-                                        "البيع قطاعي:  ",
-                                        style: TextStyle(
-                                          color: Colors.green.shade700,
-
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        product.retailPrice % 1 == 0
-                                            ? product.retailPrice
-                                                  .toInt()
-                                                  .toString() // لو صحيح يظهر بدون كسور
-                                            : product.retailPrice
-                                                  .toString(), // لو كسر يظهر كما هو
-                                        style: TextStyle(
-                                          color: Colors.green.shade700,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  //  سعر البيع جمله
-                                  Row(
-                                    children: [
-                                      Text(
-                                        "البيع جمله:   ",
-                                        style: TextStyle(
-                                          color: Colors.orange.shade900,
-
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        product.wholesalePrice % 1 == 0
-                                            ? product.wholesalePrice
-                                                  .toInt()
-                                                  .toString() // لو صحيح يظهر بدون كسور
-                                            : product.wholesalePrice
-                                                  .toString(), // لو كسر يظهر كما هو
-                                        style: TextStyle(
-                                          color: Colors.orange.shade900,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  //  الكمية
-                                  Align(
-                                    alignment: AlignmentGeometry.bottomLeft,
-                                    child: countProduct(
-                                      label: 'الكمية: ${product.stockQuantity}',
-                                      color:
-                                          product.stockQuantity <=
-                                              product.minStockLevel
-                                          ? Colors.red.shade100
-                                          : Colors.green.shade100,
-                                      textColor:
-                                          product.stockQuantity <=
-                                              product.minStockLevel
-                                          ? Colors.red.shade800
-                                          : Colors.green.shade800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  ActionIconButton(
-                                    icon: Icons.edit,
-                                    backgroundColor: Colors.blue.shade300,
-                                    onTap: () async {
-                                      context.push(
-                                        '/edit-product',
-                                        extra: product,
-                                      );
-                                    },
-                                  ),
-                                  SizedBox(width: 8),
-                                  ActionIconButton(
-                                    icon: Icons.delete,
-                                    backgroundColor: Colors.red.shade300,
-                                    onTap: () => _deleteProduct(product),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          return ProductListCard(
+                            product: product,
+                            onTap: () {
+                              // Optional: Navigate to detail view or do nothing
+                            },
+                            onEdit: () async {
+                              context.push('/edit-product', extra: product);
+                            },
+                            onDelete: () => _deleteProduct(product),
                           );
                         },
                       ),
@@ -409,26 +274,4 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   // -----------------------------Widgets-----------------------------
-
-  Widget countProduct({
-    required String label,
-    required Color color,
-    required Color textColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
 }

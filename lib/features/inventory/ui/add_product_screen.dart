@@ -42,9 +42,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       'brand': TextEditingController(),
       'stock': TextEditingController(),
       'minStock': TextEditingController(text: kDefaultMinStock),
-      'purchasePrice': TextEditingController(),
-      'retailPrice': TextEditingController(),
-      'wholesalePrice': TextEditingController(),
+      'purchasePrice': TextEditingController(text: "0"),
+      'retailPrice': TextEditingController(text: "1"),
+      'wholesalePrice': TextEditingController(text: "1"),
       'expiryDate': TextEditingController(),
       'expiryAlert': TextEditingController(text: kDefaultExpiryAlert),
       'productionDate': TextEditingController(),
@@ -136,6 +136,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
     _controllers['minStock']!.text = kDefaultMinStock;
     _controllers['expiryAlert']!.text = kDefaultExpiryAlert;
+    _controllers['purchasePrice']!.text = "0";
+    _controllers['retailPrice']!.text = "1";
+    _controllers['wholesalePrice']!.text = "1";
+
     setState(() {
       _selectedExpiryDate = null;
       _productionDate = null;

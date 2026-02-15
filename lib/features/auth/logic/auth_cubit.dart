@@ -1,14 +1,31 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/network/network_info.dart';
 import '../data/services/auth_service.dart';
 import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthService _authService;
+  final NetworkInfo _networkInfo;
 
-  AuthCubit(this._authService) : super(AuthInitial());
+  AuthCubit(this._authService, this._networkInfo) : super(AuthInitial());
+
+  /// Helper to check network connection
+  Future<bool> _checkNetworkAndEmitError() async {
+    if (!await _networkInfo.isConnected) {
+      emit(
+        const AuthError(
+          'لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة والمحاولة مرة أخرى.',
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
 
   /// Check Status on App Start
   Future<void> checkAuthStatus() async {
+    if (!await _checkNetworkAndEmitError()) return;
+
     // Check if user session exists
     final user = _authService.currentUser;
     if (user != null) {
@@ -31,6 +48,8 @@ class AuthCubit extends Cubit<AuthState> {
 
   /// Sign In Logic
   Future<void> signIn(String phone, String password) async {
+    if (!await _checkNetworkAndEmitError()) return;
+
     emit(AuthLoading());
     try {
       await _authService.signIn(phone: phone, password: password);
@@ -54,6 +73,8 @@ class AuthCubit extends Cubit<AuthState> {
     required String fullName,
     required String shopName,
   }) async {
+    if (!await _checkNetworkAndEmitError()) return;
+
     emit(AuthLoading());
     try {
       await _authService.signUp(
@@ -80,6 +101,10 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   String _mapErrorMessage(String error) {
+    if (error.contains('SocketException') ||
+        error.contains('Network request failed')) {
+      return 'خطأ في الاتصال بالشبكة';
+    }
     if (error.contains('Invalid login credentials')) {
       return 'رقم الهاتف أو كلمة المرور غير صحيحة';
     }

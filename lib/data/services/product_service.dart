@@ -105,6 +105,13 @@ class ProductService {
         query = query.eq('category_id', categoryId);
       }
 
+      // Search Filter
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        query = query.or(
+          'name.ilike.%$searchQuery%,barcode.ilike.%$searchQuery%',
+        );
+      }
+
       // Low Stock Filter
       if (lowStockOnly == true) {
         // Unfortunately, Supabase Flutter (PostgREST) does not support comparing two columns directly in .filter() easily without RPC.

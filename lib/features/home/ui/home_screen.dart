@@ -1,7 +1,8 @@
+import 'package:al_noor_gallery/core/utils/my_card.dart';
+import 'package:al_noor_gallery/features/home/ui/widgets/custom_drawer.dart';
+import 'package:al_noor_gallery/features/home/ui/widgets/custom_home_appbar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../auth/logic/auth_cubit.dart';
 import '../../auth/data/services/auth_service.dart'; // Direct access for simplicity or via Cubit
 import 'widgets/dashboard_card.dart';
 
@@ -13,8 +14,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _shopName = 'معرض النور'; // Default
-  String _userName = 'مرحباً بك';
+  String _shopName = 'al Noor POS'; // Default
+  String _userName = 'مرحباً ';
   final _authService = AuthService(); // Instance
 
   @override
@@ -33,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         if (profile['full_name'] != null &&
             profile['full_name'].toString().isNotEmpty) {
-          _userName = 'مرحباً، أستاذ ${profile['full_name']}';
+          _userName = 'مرحباً  ${profile['full_name']}';
         }
       });
     }
@@ -42,107 +43,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(color: Color(0xFF1565C0)),
-              accountName: Text(
-                _userName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              accountEmail: Text(_shopName),
-              currentAccountPicture: const CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Icon(Icons.store, color: Color(0xFF1565C0), size: 30),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.inventory),
-              title: const Text('المخزن'),
-              onTap: () {
-                context.pop();
-                context.push('/inventory');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text('سجل المبيعات'),
-              onTap: () {
-                context.pop();
-                context.push('/sales-history');
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text(
-                'تسجيل الخروج',
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: () async {
-                await context.read<AuthCubit>().signOut();
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: CustomDrawer(userName: _userName, shopName: _shopName),
       body: CustomScrollView(
         slivers: [
           //AppBar
-          SliverAppBar(
-            expandedHeight: 125.0,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [const Color(0xFF1565C0), Colors.blue.shade400],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Image.asset("assets/image/logo_store.png"), // Can keep or replace
-                    const Icon(
-                      Icons.storefront,
-                      size: 50,
-                      color: Colors.white70,
-                    ),
-                    const SizedBox(width: 20),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _shopName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          _userName,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          CustomHomeAppBar(shopName: _shopName, userName: _userName),
           // Dashboard Grid
           SliverPadding(
             padding: const EdgeInsets.all(16.0),
@@ -155,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 DashboardCard(
                   title: ' البيع',
                   icon: Icons.point_of_sale,
-                  color: Colors.green,
+                  color: Colors.green.shade400,
                   onTap: () => context.push('/pos'),
                 ),
 
@@ -166,19 +71,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.orange,
                   onTap: () => context.push('/inventory'),
                 ),
-
-                // 3. Purchases (Placeholder)
+                // 3. Sales Invoices History
+                DashboardCard(
+                  title: 'فواتير البيع',
+                  icon: Icons.receipt_long, // or description
+                  color: Colors.teal.shade700,
+                  onTap: () => context.push('/sales-history'),
+                ),
+                // 4. Purchases (Placeholder)
                 DashboardCard(
                   title: 'شراء\n(قريباً)',
                   icon: Icons.shopping_cart,
-                  color: Colors.redAccent,
+                  color: Colors.redAccent.shade400,
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('قريباً: إدارة الشراء')),
                     );
                   },
                 ),
-                // 4. Accounts (Placeholder)
+                // 5. Accounts (Placeholder)
                 DashboardCard(
                   title: 'الحسابات\n(قريباً)',
                   icon: Icons.calculate,
@@ -188,13 +99,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SnackBar(content: Text('قريباً: إدارة الحسابات')),
                     );
                   },
-                ),
-                // 5. Sales Invoices History
-                DashboardCard(
-                  title: 'فواتير البيع',
-                  icon: Icons.receipt_long, // or description
-                  color: Colors.teal,
-                  onTap: () => context.push('/sales-history'),
                 ),
 
                 // 6. Purchase Invoices (Placeholder)
@@ -233,11 +137,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-
-                SizedBox(height: 200),
               ],
             ),
           ),
+          SliverToBoxAdapter(child:const MyCard()),
+          SliverToBoxAdapter(child: const SizedBox(height: 50)),
         ],
       ),
     );

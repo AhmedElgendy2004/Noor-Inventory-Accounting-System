@@ -24,6 +24,7 @@ class InventoryLoaded extends InventoryState {
   final String? selectedCategoryId;
   final bool isProductView;
   final bool isLowStockView; // New flag
+  final bool isSearching;
 
   const InventoryLoaded(
     this.products, {
@@ -36,6 +37,7 @@ class InventoryLoaded extends InventoryState {
     this.selectedCategoryId,
     this.isProductView = false,
     this.isLowStockView = false,
+    this.isSearching = false,
   });
 
   InventoryLoaded copyWith({
@@ -49,6 +51,7 @@ class InventoryLoaded extends InventoryState {
     String? selectedCategoryId,
     bool? isProductView,
     bool? isLowStockView,
+    bool? isSearching,
   }) {
     return InventoryLoaded(
       products ?? this.products,
@@ -61,6 +64,7 @@ class InventoryLoaded extends InventoryState {
       selectedCategoryId: selectedCategoryId ?? this.selectedCategoryId,
       isProductView: isProductView ?? this.isProductView,
       isLowStockView: isLowStockView ?? this.isLowStockView,
+      isSearching: isSearching ?? this.isSearching,
     );
   }
 
@@ -76,6 +80,7 @@ class InventoryLoaded extends InventoryState {
     isLowStockView,
     selectedCategoryId,
     isProductView,
+    isSearching,
   ];
 }
 

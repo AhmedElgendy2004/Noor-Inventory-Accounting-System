@@ -91,7 +91,9 @@ class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError) {
-          return Center(child: Text('حدث خطأ: ${snapshot.error}'));
+          return Center(
+            child: ErrorNoInternetConnection(),
+          );
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text('لا توجد منتجات مطابقة'));
         }
@@ -181,6 +183,42 @@ class ProductSearchDelegate extends SearchDelegate<ProductModel?> {
       textTheme: theme.textTheme.copyWith(
         titleLarge: const TextStyle(color: Colors.white, fontSize: 18),
       ),
+    );
+  }
+}
+
+class ErrorNoInternetConnection extends StatelessWidget {
+  const ErrorNoInternetConnection({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.red.shade50,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.wifi_off_rounded, // أو Icons.error_outline
+            size: 60,
+            color: Colors.red.shade400,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'لا يوجد اتصال بالانترنت',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 }

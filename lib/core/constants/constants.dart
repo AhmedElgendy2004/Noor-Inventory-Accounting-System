@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 //defulte values for text fields in add product screen
-const String kDefaultMinStock = '5';
+const String kDefaultMinStock = '3';
 const String kDefaultExpiryAlert = '120';
 
 // ignore: non_constant_identifier_names

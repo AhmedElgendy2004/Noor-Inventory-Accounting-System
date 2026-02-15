@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,11 +13,18 @@ class InventoryCubit extends Cubit<InventoryState> {
   InventoryCubit(this._productService) : super(InventoryInitial());
 
   static const int _pageSize = 15;
+  Timer? _searchTimer;
   List<CategoryModel> _cachedCategories = [];
   int _cachedGlobalCount = 0;
 
   // Cache for deduplication of products in the main list
   final Set<String> _productIds = {};
+
+  @override
+  Future<void> close() {
+    _searchTimer?.cancel();
+    return super.close();
+  }
 
   /// Loads initial data (Categories + First Page of Products)
   /// Uses "Silent Refresh" if data already exists in memory.
@@ -192,6 +200,20 @@ class InventoryCubit extends Cubit<InventoryState> {
     }
   }
 
+  /// Search with Debounce
+  void searchProducts(String query) {
+    _searchTimer?.cancel();
+
+    if (query.isEmpty) {
+      loadInitialData(); // Return to full list immediately
+      return;
+    }
+
+    _searchTimer = Timer(const Duration(milliseconds: 500), () {
+      fetchProducts(query: query);
+    });
+  }
+
   // Note: Old fetchProducts logic is still here for searching/filtering in separate screens
   // But we might need to adapt it if it conflicts.
   // The user asked to update "InventoryCubit logic".
@@ -242,7 +264,7 @@ class InventoryCubit extends Cubit<InventoryState> {
           emit(currentState.copyWith(isLoadingMore: false));
 
           // 2. (اختياري) ممكن تطبع الخطأ في الـ Console للمتابعة أثناء البرمجة
-          debugPrint('Error loading more products: $e');
+        //  debugPrint('Error loading more products: $e');
 
           // 3. (احترافي) إرسال إشعار للمستخدم بدون تغيير حالة الشاشة
           // بما إن الكيوبيت ملوش واجهة، بنكتفي بإيقاف اللودنج
@@ -281,6 +303,7 @@ class InventoryCubit extends Cubit<InventoryState> {
           totalProductCount: totalCount,
           globalProductCount:
               _cachedGlobalCount, // Ensure global count is preserved
+          isSearching: query != null && query.isNotEmpty,
         ),
       );
     } catch (e) {
@@ -414,8 +437,31 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   /// ⚠️ دالة مؤقتة لتوليد بيانات اختبارية (نسخة محسنة)
   Future<void> generateMockProducts() async {
+    // التأكد من وجود تصنيفات قبل التوليد
     if (_cachedCategories.isEmpty) {
-      emit(const InventoryError("يجب إضافة تصنيفات أولاً لتوليد المنتجات!"));
+      try {
+        // محاولة تحميل التصنيفات
+        final cats = await _productService.getCategories();
+        if (cats.isEmpty) {
+          // إنشاء تصنيفات افتراضية إذا لم توجد أي تصنيفات
+          emit(InventoryLoading()); // إظهار تحميل مؤقت
+          await _productService.addCategory('تصنيف عام', Colors.blue.value);
+          await _productService.addCategory('ملابس', Colors.red.value);
+          await _productService.addCategory('إلكترونيات', Colors.green.value);
+
+          // إعادة تحميل التصنيفات بعد الإضافة
+          _cachedCategories = await _productService.getCategories();
+        } else {
+          _cachedCategories = cats;
+        }
+      } catch (e) {
+        emit(InventoryError("فشل تحميل أو إنشاء التصنيفات: $e"));
+        return;
+      }
+    }
+
+    if (_cachedCategories.isEmpty) {
+      emit(const InventoryError("تعذر الحصول على تصنيفات لتوليد البيانات."));
       return;
     }
 
