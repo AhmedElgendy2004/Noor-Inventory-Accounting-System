@@ -267,13 +267,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('المخزن'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.playlist_add),
-            tooltip: 'توليد بيانات اختبار',
-            onPressed: _generateMockData,
-          ),
-        ],
+        //زر اضافه 100 منتج عشوائي (للاختبار فقط)
+
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.playlist_add),
+        //     tooltip: 'توليد بيانات اختبار',
+        //     onPressed: _generateMockData,
+        //   ),
+        // ],
       ),
       floatingActionButton: CustomFloatingActionButton(),
       body: SafeArea(
