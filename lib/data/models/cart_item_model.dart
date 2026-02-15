@@ -18,7 +18,7 @@ class CartItemModel {
   });
 
   // حساب الإجمالي للصنف الواحد
-  double get total => priceAtSale * quantity;
+  double get total => double.parse((priceAtSale * quantity).toStringAsFixed(2));
 
   // تحويل لـ JSON مطابق لجدول sale_items
   Map<String, dynamic> toJson() {

@@ -56,6 +56,17 @@ void main() {
         when(
           () => mockProductService.getTotalProductsCount(),
         ).thenAnswer((_) async => 50);
+
+        when(
+          () => mockProductService.getProducts(
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+          ),
+        ).thenAnswer((_) async => [tProduct]);
+
+        when(
+          () => mockProductService.getTotalProductsCount(lowStockOnly: true),
+        ).thenAnswer((_) async => 5);
         return inventoryCubit;
       },
       act: (cubit) => cubit.loadInitialData(),
@@ -71,23 +82,19 @@ void main() {
     blocTest<InventoryCubit, InventoryState>(
       'emits [InventoryLoading, InventorySuccess, InventoryLoaded] after adding product',
       build: () {
-        when(
-          () => mockProductService.addProduct(any()),
-        ).thenAnswer((_) async {});
-        // Mock the re-fetch calls that happen inside addProduct -> loadInitialData
-        when(
-          () => mockProductService.getCategories(),
-        ).thenAnswer((_) async => [tCategory]);
-        when(
-          () => mockProductService.getTotalProductsCount(),
-        ).thenAnswer((_) async => 51);
+        when(() => mockProductService.addProduct(any())).thenAnswer(
+          (_) async => tProduct,
+        ); // Must return a Future<ProductModel>
+        // No need to stub getCategories here if addProduct doesn't call it,
+        // but if it does (e.g. implicitly via loadInitialData), we need it.
+        // Based on code reading, addProduct relies on _cachedCategories or manual emit.
         return inventoryCubit;
       },
       act: (cubit) => cubit.addProduct(tProduct),
       expect: () => [
         isA<InventoryLoading>(), // addProduct loading
         isA<InventorySuccess>(), // success message
-        isA<InventoryLoaded>(), // reload data loaded
+        isA<InventoryLoaded>(), // manual reload
       ],
     );
 

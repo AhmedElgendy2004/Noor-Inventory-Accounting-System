@@ -49,31 +49,31 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   // دالة توليد البيانات الاختبارية
-  void _generateMockData() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('توليد بيانات اختبارية'),
-        content: const Text(
-          'هل تريد إضافة 100 منتج عشوائي؟\n'
-          'يستخدم هذا الغرض للاختبار فقط.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.read<InventoryCubit>().generateMockProducts();
-            },
-            child: const Text('توليد'),
-          ),
-        ],
-      ),
-    );
-  }
+  // void _generateMockData() {
+  //   showDialog(
+  //     context: context,
+  //     builder: (_) => AlertDialog(
+  //       title: const Text('توليد بيانات اختبارية'),
+  //       content: const Text(
+  //         'هل تريد إضافة 100 منتج عشوائي؟\n'
+  //         'يستخدم هذا الغرض للاختبار فقط.',
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.pop(context),
+  //           child: const Text('إلغاء'),
+  //         ),
+  //         ElevatedButton(
+  //           onPressed: () {
+  //             Navigator.pop(context);
+  //             context.read<InventoryCubit>().generateMockProducts();
+  //           },
+  //           child: const Text('توليد'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Future<void> _deleteCategory(CategoryModel category) async {
     final confirm = await showDialog<bool>(
@@ -125,19 +125,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
 
     if (confirm == true && mounted && product.id != null) {
-      context.read<InventoryCubit>().deleteProduct(product.id!);
-      // إعادة تحميل البيانات بعد الحذف (البحث أو القائمة)
-      // إذا كنا في وضع البحث، سيعاد تحميل البحث أوتوماتيكياً إذا كان الكيوبيت يدعم ذلك،
-      // ولكن هنا الكيوبيت يحتاج لتحديث القائمة. deleteProduct في الكيوبيت عادة لا تعيد التحميل تلقائياً للقائمة المحلية؟
-      // سنقوم باستدعاء loadInitialData أو تحديث البحث.
-      // الأفضل: إعادة تنفيذ البحث الحالي.
+      await context.read<InventoryCubit>().deleteProduct(product.id!);
+
+      if (!mounted) return;
+      // تم تحديث الكيوبيت ليقوم بالتحديث تلقائياً، ولكن هنا نضيف منطق إعادة البحث إذا كان مفعلاً
       final searchTerm = _searchController.text;
       if (searchTerm.isNotEmpty) {
         context.read<InventoryCubit>().searchProducts(searchTerm);
       } else {
-        context.read<InventoryCubit>().loadInitialData();
+        // إذا لم يكن هناك بحث، الكيوبيت قام بالتحديث بالفعل، لا داعي لاستدعاء loadInitialData مرتين
+        // إلا إذا كنا نريد التأكد من صحة العدادات العالمية
+        context.read<InventoryCubit>().loadInitialData(isRefresh: true);
       }
-      SnackBarUtils.showSuccess(context, 'تم حذف المنتج بنجاح');
+
+      if (mounted) {
+        SnackBarUtils.showSuccess(context, 'تم حذف المنتج بنجاح');
+      }
     }
   }
 

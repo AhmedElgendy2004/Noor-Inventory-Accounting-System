@@ -52,14 +52,27 @@ class ProductService {
   }
 
   /// Adds a new product to the database
-  Future<void> addProduct(ProductModel product) async {
+  Future<ProductModel> addProduct(ProductModel product) async {
     try {
-      await _supabase
+      final response = await _supabase
           .from(SupabaseConstants.productsTable)
-          .insert(product.toJson());
+          .insert(product.toJson())
+          .select()
+          .single();
+
+      return ProductModel.fromJson(response);
     } catch (e) {
       // In a real app, strict error handling is better
       throw Exception('Error adding product:/n --------/n $e');
+    }
+  }
+
+  /// Adds pricing tiers for a product
+  Future<void> addPricingTiers(List<Map<String, dynamic>> tiers) async {
+    try {
+      await _supabase.from('product_pricing_tiers').insert(tiers);
+    } catch (e) {
+      throw Exception('Error adding pricing tiers:/n --------/n $e');
     }
   }
 

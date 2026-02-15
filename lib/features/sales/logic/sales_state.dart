@@ -40,7 +40,7 @@ class SalesUpdated extends SalesState {
 
     return SalesUpdated(
       cartItems: items,
-      totalAmount: total,
+      totalAmount: double.parse(total.toStringAsFixed(2)),
       isWholesale: isWholesale ?? this.isWholesale,
       paymentType: paymentType ?? this.paymentType,
       selectedCustomer:

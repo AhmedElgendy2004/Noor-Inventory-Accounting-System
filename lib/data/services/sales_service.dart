@@ -13,7 +13,7 @@ class SalesService {
     try {
       final response = await _supabase
           .from(SupabaseConstants.productsTable)
-          .select()
+          .select('*, product_pricing_tiers(*)')
           .or('name.ilike.%$query%,barcode.eq.$query')
           .limit(20);
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/utils/pricing_calculator.dart';
 import '../../../data/models/cart_item_model.dart';
 import '../../../data/models/customer_model.dart';
 import '../../../data/models/product_model.dart';
@@ -23,6 +24,36 @@ class SalesCubit extends Cubit<SalesState> {
     }
   }
 
+  // === Price Calculation Helper ===
+  ({double price, String type}) _calculateBestPrice(
+    ProductModel product,
+    int quantity,
+    bool isWholesale,
+  ) {
+    // Use the intelligent greedy calculator
+    final result = PricingCalculator.calculateBestPrice(
+      product: product,
+      quantity: quantity,
+      isWholesale: isWholesale,
+    );
+
+    // If tiers were applied (breakdown is complex), we return the average unit price
+    // checking if we used tiers or just basic price
+    if (result.breakdown.contains('+') ||
+        result.breakdown.contains('عرض') ||
+        result.breakdown.contains('x')) {
+      // If mixed (e.g. 2 Cartons + 3 Units)
+      // We store the *Effective Unit Price* so that (Qty * UnitPrice) equals Total.
+      return (price: result.averageUnitPrice, type: result.breakdown);
+    } else {
+      // Simple case (no tiers matched or no tiers exist)
+      return (
+        price: result.averageUnitPrice,
+        type: isWholesale ? 'جملة' : 'قطاعي',
+      );
+    }
+  }
+
   // === Cart Management ===
 
   void togglePaymentType(String type) {
@@ -43,14 +74,14 @@ class SalesCubit extends Cubit<SalesState> {
     if (state is SalesUpdated) {
       final currentState = state as SalesUpdated;
 
-      // Update prices for all items in cart based on new mode
+      // Update prices for all items in cart based on new mode OR tiers
       final updatedItems = currentState.cartItems.map((item) {
-        return item.copyWith(
-          priceAtSale: isWholesale
-              ? item.product.wholesalePrice
-              : item.product.retailPrice,
-          priceType: isWholesale ? 'wholesale' : 'retail',
+        final calc = _calculateBestPrice(
+          item.product,
+          item.quantity,
+          isWholesale,
         );
+        return item.copyWith(priceAtSale: calc.price, priceType: calc.type);
       }).toList();
 
       emit(
@@ -73,18 +104,13 @@ class SalesCubit extends Cubit<SalesState> {
 
     List<CartItemModel> newItems = List.from(currentState.cartItems);
 
-    // Determine price based on current mode
-    final price = currentState.isWholesale
-        ? product.wholesalePrice
-        : product.retailPrice;
-    final priceType = currentState.isWholesale ? 'wholesale' : 'retail';
-
     if (index >= 0) {
       // 2. Increment Quantity
       final existingItem = newItems[index];
+      final newQuantity = existingItem.quantity + 1;
 
       // validate stock
-      if (existingItem.quantity + 1 > product.stockQuantity) {
+      if (newQuantity > product.stockQuantity) {
         emit(
           SalesError(
             "الكمية المطلوبة غير متوفرة في المخزن. المتاح: ${product.stockQuantity}",
@@ -94,8 +120,17 @@ class SalesCubit extends Cubit<SalesState> {
         return;
       }
 
+      // Calculate new price based on new quantity
+      final calc = _calculateBestPrice(
+        product,
+        newQuantity,
+        currentState.isWholesale,
+      );
+
       newItems[index] = existingItem.copyWith(
-        quantity: existingItem.quantity + 1,
+        quantity: newQuantity,
+        priceAtSale: calc.price,
+        priceType: calc.type,
       );
     } else {
       // 3. Add new item
@@ -105,12 +140,14 @@ class SalesCubit extends Cubit<SalesState> {
         return;
       }
 
+      final calc = _calculateBestPrice(product, 1, currentState.isWholesale);
+
       newItems.add(
         CartItemModel(
           product: product,
           quantity: 1,
-          priceAtSale: price,
-          priceType: priceType,
+          priceAtSale: calc.price,
+          priceType: calc.type,
         ),
       );
     }
@@ -140,7 +177,19 @@ class SalesCubit extends Cubit<SalesState> {
         emit(currentState);
         return;
       }
-      newItems[index] = item.copyWith(quantity: newQty);
+
+      // Recalculate price for new quantity
+      final calc = _calculateBestPrice(
+        item.product,
+        newQty,
+        currentState.isWholesale,
+      );
+
+      newItems[index] = item.copyWith(
+        quantity: newQty,
+        priceAtSale: calc.price,
+        priceType: calc.type,
+      );
     }
 
     emit(currentState.copyWith(cartItems: newItems));
@@ -209,7 +258,7 @@ class SalesCubit extends Cubit<SalesState> {
       emit(SalesSuccess(invId));
     } catch (e) {
       // طباعة الخطأ في الكونسول للمطور
-     // debugPrint("❌ Sales Transaction Failed: $e");
+      // debugPrint("❌ Sales Transaction Failed: $e");
 
       // استخراج رسالة خطأ مفهومة إذا أمكن
       String errorMessage = "فشل تنفيذ البيع";

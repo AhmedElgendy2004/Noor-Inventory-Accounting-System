@@ -178,7 +178,7 @@ class _SalesScreenState extends State<SalesScreen> {
 
                   // Footer
                   PaymentSummaryFooter(
-                    totalAmount: state.totalAmount,
+                    totalAmount: state.totalAmount.roundToDouble(),
                     paymentType: state.paymentType,
                     isWholesale: state.isWholesale,
                     customerName: state.selectedCustomer?.name,

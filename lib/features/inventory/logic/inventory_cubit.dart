@@ -264,7 +264,7 @@ class InventoryCubit extends Cubit<InventoryState> {
           emit(currentState.copyWith(isLoadingMore: false));
 
           // 2. (اختياري) ممكن تطبع الخطأ في الـ Console للمتابعة أثناء البرمجة
-        //  debugPrint('Error loading more products: $e');
+          //  debugPrint('Error loading more products: $e');
 
           // 3. (احترافي) إرسال إشعار للمستخدم بدون تغيير حالة الشاشة
           // بما إن الكيوبيت ملوش واجهة، بنكتفي بإيقاف اللودنج
@@ -373,11 +373,29 @@ class InventoryCubit extends Cubit<InventoryState> {
     }
   }
 
-  Future<void> addProduct(ProductModel product) async {
+  Future<void> addProduct(
+    ProductModel product, {
+    List<Map<String, dynamic>>? pricingTiers,
+  }) async {
     emit(InventoryLoading());
     try {
-      await _productService.addProduct(product);
-      _cachedGlobalCount++; // زيادة العدد
+      // 1. إضافة المنتج واستلام النسخة المخزنة التي تحتوي على ID
+      final createdProduct = await _productService.addProduct(product);
+      _cachedGlobalCount++;
+
+      // 2. إذا كان هناك عروض، نقوم بحفظها
+      if (pricingTiers != null &&
+          pricingTiers.isNotEmpty &&
+          createdProduct.id != null) {
+        // إضافة product_id لكل عرض
+        final tiersWithId = pricingTiers.map((tier) {
+          final Map<String, dynamic> newTier = Map.from(tier);
+          newTier['product_id'] = createdProduct.id;
+          return newTier;
+        }).toList();
+
+        await _productService.addPricingTiers(tiersWithId);
+      }
 
       emit(const InventorySuccess('تم إضافة المنتج بنجاح'));
       // العودة للحالة الطبيعية مع وجود التصنيفات
@@ -392,6 +410,7 @@ class InventoryCubit extends Cubit<InventoryState> {
       );
     } catch (e) {
       emit(InventoryError(e.toString()));
+      debugPrint('Error adding product: $e');
     }
   }
 
@@ -483,7 +502,7 @@ class InventoryCubit extends Cubit<InventoryState> {
             name: 'منتج تجريبي ${random.nextInt(10000)}',
             barcode: 'MOCK-${DateTime.now().millisecondsSinceEpoch}-$i',
             categoryId: category.id,
-            brandCompany: 'شركة تجريبية',
+            brandCompany: ' شركة تجريبية',
             purchasePrice: purchasePrice.toDouble(),
             retailPrice: retailPrice.toDouble(),
             wholesalePrice: (purchasePrice + 5).toDouble(),

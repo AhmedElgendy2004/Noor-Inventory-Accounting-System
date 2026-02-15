@@ -1,3 +1,5 @@
+import 'pricing_tier_model.dart';
+
 class ProductModel {
   final String? id;
   final String name;
@@ -15,6 +17,7 @@ class ProductModel {
   final String? supplierId;
   final String? categoryId;
   final String? categoryName; // للعرض فقط
+  final List<PricingTierModel>? pricingTiers;
 
   ProductModel({
     this.id,
@@ -33,9 +36,17 @@ class ProductModel {
     this.supplierId,
     this.categoryId,
     this.categoryName,
+    this.pricingTiers,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    var tiersList = <PricingTierModel>[];
+    if (json['product_pricing_tiers'] != null) {
+      json['product_pricing_tiers'].forEach((v) {
+        tiersList.add(PricingTierModel.fromJson(v));
+      });
+    }
+
     return ProductModel(
       id: json['id'] as String?,
       name: json['name'] as String,
@@ -60,6 +71,7 @@ class ProductModel {
       categoryName: json['categories'] != null
           ? json['categories']['name']
           : null,
+      pricingTiers: tiersList,
     );
   }
 
